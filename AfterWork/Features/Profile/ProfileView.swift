@@ -3,6 +3,7 @@ import SwiftUI
 struct ProfileView: View {
     @Environment(AuthManager.self) private var auth
     @State private var isEditing = false
+    @State private var activities = ProfileActivitiesViewModel()
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -36,15 +37,10 @@ struct ProfileView: View {
                     Button("Edit Profile") { auth.message = nil; isEditing = true }
                         .buttonStyle(.borderedProminent).disabled(auth.isBusy)
 
-                    VStack(spacing: AppSpacing.md) {
-                        statistic("Upcoming", symbol: "calendar", count: 3)
-                        statistic("Created", symbol: "plus.circle", count: 2)
-                        statistic("Joined", symbol: "person.2", count: 8)
-                        statistic("Saved", symbol: "bookmark", count: 4)
-                    }
-                    Text("Activity counts are previews")
-                        .font(AppTypography.caption)
-                        .foregroundStyle(AppColors.secondaryText)
+                    profileSection("Upcoming", symbol: "calendar", activities: activities.joined)
+                    profileSection("Saved", symbol: "bookmark", activities: activities.saved)
+                    profileSection("Created", symbol: "plus.circle", activities: activities.created)
+                    if let error = activities.errorMessage { Text(error).foregroundStyle(.red) }
                     Button("Sign Out", role: .destructive) { Task { await auth.signOut() } }
                         .disabled(auth.isBusy)
                     if auth.isBusy { ProgressView() }
@@ -56,6 +52,7 @@ struct ProfileView: View {
             }
             .background(AppColors.appBackground)
             .navigationTitle("Profile")
+            .task { await activities.load() }
             .sheet(isPresented: $isEditing) { OnboardingView(isEditing: true).environment(auth) }
             #if DEBUG
             .toolbar {
@@ -72,17 +69,19 @@ struct ProfileView: View {
         }
     }
 
-    private func statistic(_ title: String, symbol: String, count: Int) -> some View {
-        HStack(spacing: AppSpacing.md) {
-            Label(title, systemImage: symbol)
-            Spacer(minLength: AppSpacing.sm)
-            Text(count, format: .number).font(.title2.bold())
+    private func profileSection(_ title: String, symbol: String, activities: [Activity]) -> some View {
+        VStack(alignment: .leading, spacing: AppSpacing.sm) {
+            Label(title, systemImage: symbol).font(AppTypography.headline)
+            if activities.isEmpty {
+                Text("No activities yet").font(AppTypography.caption).foregroundStyle(AppColors.secondaryText)
+            } else {
+                ForEach(activities) { activity in
+                    NavigationLink { ActivityDetailsView(id: activity.id) } label: { ActivityRow(activity: activity) }
+                        .buttonStyle(.plain)
+                }
+            }
         }
-        .font(AppTypography.headline)
-        .padding(AppSpacing.lg)
-        .background(AppColors.surface, in: RoundedRectangle(cornerRadius: AppCornerRadius.medium))
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(title), \(count)")
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

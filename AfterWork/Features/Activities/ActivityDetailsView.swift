@@ -5,6 +5,7 @@ struct ActivityDetailsView: View {
     @Environment(ActivityListViewModel.self) private var activities
     @Environment(\.dismiss) private var dismiss
     @State private var model: ActivityDetailsViewModel
+    @State private var engagement = ActivityEngagementViewModel()
     @State private var isEditing = false
     @State private var confirmDelete = false
 
@@ -14,7 +15,8 @@ struct ActivityDetailsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: AppSpacing.lg) {
                 if model.isLoading { ProgressView("Loading activity…").frame(maxWidth: .infinity) }
-                if let activity = model.activity {
+                if let sourceActivity = model.activity {
+                    let activity = engagement.state(for: sourceActivity)
                     ActivityCover(activity: activity).frame(height: 240)
                         .clipShape(RoundedRectangle(cornerRadius: AppCornerRadius.large))
                     CategoryChip(category: activity.category, title: activity.categoryDisplayName)
@@ -30,9 +32,31 @@ struct ActivityDetailsView: View {
                         AvatarView(initials: activity.organizerInitials)
                         Text("Organized by \(activity.organizerName)")
                     }
-                    Text(activity.participationText).font(AppTypography.headline)
-                    Text("Joining and saving activities are coming soon.")
-                        .font(AppTypography.caption).foregroundStyle(.secondary)
+                    HStack(spacing: AppSpacing.md) {
+                        Button(activity.isSaved ? "Saved" : "Save", systemImage: activity.isSaved ? "bookmark.fill" : "bookmark") {
+                            Task { await engagement.save(activityId: activity.id, isSaved: !activity.isSaved) }
+                        }.buttonStyle(.bordered)
+                        if activity.isGoing {
+                            Button("Going", systemImage: "checkmark.circle.fill") {
+                                Task { await engagement.leave(activityId: activity.id) }
+                            }.buttonStyle(.borderedProminent)
+                        } else {
+                            let isFull = activity.maxParticipants.map { activity.participantCount >= $0 } ?? false
+                            Button(isFull ? "Full" : "I'm Going", systemImage: "checkmark") {
+                                Task { await engagement.join(activityId: activity.id) }
+                            }.buttonStyle(.borderedProminent)
+                                .disabled(isFull)
+                        }
+                    }
+                    NavigationLink {
+                        ParticipantsView(activityId: activity.id)
+                    } label: {
+                        HStack {
+                            AvatarGroup(initials: activity.participantInitials, totalCount: activity.participantCount)
+                            Text(activity.participationText)
+                        }
+                    }.buttonStyle(.plain)
+                    if let error = engagement.errorMessage { Text(error).foregroundStyle(.red) }
                     if activity.authorId == auth.userID {
                         Button("Edit Activity") { isEditing = true }.buttonStyle(.borderedProminent)
                             .disabled(model.isDeleting || model.isLoading)
@@ -51,8 +75,14 @@ struct ActivityDetailsView: View {
         .background(AppColors.appBackground)
         .navigationTitle("Activity Details")
         .navigationBarTitleDisplayMode(.inline)
-        .task { await model.load() }
-        .refreshable { await model.load() }
+        .task {
+            await model.load()
+            if let activity = model.activity { await engagement.load(activityIDs: [activity.id]) }
+        }
+        .refreshable {
+            await model.load()
+            if let activity = model.activity { await engagement.load(activityIDs: [activity.id]) }
+        }
         .onChange(of: model.needsAuthentication) { _, needed in
             if needed { Task { await auth.restore() } }
         }

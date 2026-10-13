@@ -10,22 +10,43 @@
 		A30000000000000000000001 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = A30000000000000000000002 /* Supabase */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		A40000000000000000000009 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = CE665871307E20C500471218 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = CE665878307E20C500471218;
+			remoteInfo = AfterWork;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
 		A30000000000000000000004 /* Configuration/Base.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Configuration/Base.xcconfig; sourceTree = "<group>"; };
+		A40000000000000000000001 /* AfterWorkTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; path = AfterWorkTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		CE665879307E20C600471218 /* AfterWork.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AfterWork.app; sourceTree = BUILT_PRODUCTS_DIR; };
-        A40000000000000000000001 /* AfterWorkTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; path = AfterWorkTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		A40000000000000000000002 /* AfterWorkTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = AfterWorkTests;
+			sourceTree = "<group>";
+		};
 		CE66587B307E20C600471218 /* AfterWork */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = AfterWork;
 			sourceTree = "<group>";
 		};
-        A40000000000000000000002 /* AfterWorkTests */ = {isa = PBXFileSystemSynchronizedRootGroup; path = AfterWorkTests; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		A40000000000000000000003 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		CE665876307E20C500471218 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -34,7 +55,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-        A40000000000000000000003 = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -42,7 +62,7 @@
 			isa = PBXGroup;
 			children = (
 				CE66587B307E20C600471218 /* AfterWork */,
-                A40000000000000000000002 /* AfterWorkTests */,
+				A40000000000000000000002 /* AfterWorkTests */,
 				A30000000000000000000004 /* Configuration/Base.xcconfig */,
 				CE66587A307E20C600471218 /* Products */,
 			);
@@ -52,7 +72,7 @@
 			isa = PBXGroup;
 			children = (
 				CE665879307E20C600471218 /* AfterWork.app */,
-                A40000000000000000000001 /* AfterWorkTests.xctest */,
+				A40000000000000000000001 /* AfterWorkTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -60,6 +80,27 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		A40000000000000000000004 /* AfterWorkTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A40000000000000000000005 /* Build configuration list for PBXNativeTarget "AfterWorkTests" */;
+			buildPhases = (
+				A40000000000000000000006 /* Sources */,
+				A40000000000000000000003 /* Frameworks */,
+				A40000000000000000000007 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A40000000000000000000008 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				A40000000000000000000002 /* AfterWorkTests */,
+			);
+			name = AfterWorkTests;
+			productName = AfterWorkTests;
+			productReference = A40000000000000000000001 /* AfterWorkTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		CE665878307E20C500471218 /* AfterWork */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = CE665884307E20C700471218 /* Build configuration list for PBXNativeTarget "AfterWork" */;
@@ -83,25 +124,7 @@
 			productReference = CE665879307E20C600471218 /* AfterWork.app */;
 			productType = "com.apple.product-type.application";
 		};
-        A40000000000000000000004 /* AfterWorkTests */ = {
-            isa = PBXNativeTarget;
-            buildConfigurationList = A40000000000000000000005;
-            buildPhases = (A40000000000000000000006, A40000000000000000000003, A40000000000000000000007);
-            buildRules = ();
-            dependencies = (A40000000000000000000008);
-            fileSystemSynchronizedGroups = (A40000000000000000000002);
-            name = AfterWorkTests;
-            productName = AfterWorkTests;
-            productReference = A40000000000000000000001;
-            productType = "com.apple.product-type.bundle.unit-test";
-        };
 /* End PBXNativeTarget section */
-/* Begin PBXContainerItemProxy section */
-        A40000000000000000000009 = {isa = PBXContainerItemProxy; containerPortal = CE665871307E20C500471218; proxyType = 1; remoteGlobalIDString = CE665878307E20C500471218; remoteInfo = AfterWork; };
-/* End PBXContainerItemProxy section */
-/* Begin PBXTargetDependency section */
-        A40000000000000000000008 = {isa = PBXTargetDependency; target = CE665878307E20C500471218; targetProxy = A40000000000000000000009; };
-/* End PBXTargetDependency section */
 
 /* Begin PBXProject section */
 		CE665871307E20C500471218 /* Project object */ = {
@@ -113,7 +136,11 @@
 				TargetAttributes = {
 					CE665878307E20C500471218 = {
 						CreatedOnToolsVersion = 26.1.1;
-						SystemCapabilities = { com.apple.SignInWithApple = { enabled = 1; }; };
+						SystemCapabilities = {
+							com.apple.SignInWithApple = {
+								enabled = 1;
+							};
+						};
 					};
 				};
 			};
@@ -135,12 +162,19 @@
 			projectRoot = "";
 			targets = (
 				CE665878307E20C500471218 /* AfterWork */,
-                A40000000000000000000004 /* AfterWorkTests */,
+				A40000000000000000000004 /* AfterWorkTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		A40000000000000000000007 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		CE665877307E20C500471218 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -148,10 +182,16 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-        A40000000000000000000007 = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		A40000000000000000000006 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		CE665875307E20C500471218 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -159,10 +199,51 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-        A40000000000000000000006 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		A40000000000000000000008 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = CE665878307E20C500471218 /* AfterWork */;
+			targetProxy = A40000000000000000000009 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		A40000000000000000000010 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.kingz.AfterWork.AfterWork.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/AfterWork.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/AfterWork";
+			};
+			name = Debug;
+		};
+		A40000000000000000000011 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.kingz.AfterWork.AfterWork.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/AfterWork.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/AfterWork";
+			};
+			name = Release;
+		};
 		CE665882307E20C700471218 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -288,8 +369,8 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_STYLE = Automatic;
 				CODE_SIGN_ENTITLEMENTS = Configuration/AfterWork.entitlements;
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -322,8 +403,8 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_STYLE = Automatic;
 				CODE_SIGN_ENTITLEMENTS = Configuration/AfterWork.entitlements;
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -350,11 +431,18 @@
 			};
 			name = Release;
 		};
-        A40000000000000000000010 = {isa = XCBuildConfiguration; buildSettings = { BUNDLE_LOADER = "$(TEST_HOST)"; CODE_SIGN_STYLE = Automatic; GENERATE_INFOPLIST_FILE = YES; IPHONEOS_DEPLOYMENT_TARGET = 17.0; PRODUCT_BUNDLE_IDENTIFIER = com.kingz.AfterWork.AfterWork.tests; PRODUCT_NAME = "$(TARGET_NAME)"; SDKROOT = iphoneos; SUPPORTED_PLATFORMS = "iphoneos iphonesimulator"; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = "1,2"; TEST_HOST = "$(BUILT_PRODUCTS_DIR)/AfterWork.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/AfterWork"; }; name = Debug; };
-        A40000000000000000000011 = {isa = XCBuildConfiguration; buildSettings = { BUNDLE_LOADER = "$(TEST_HOST)"; CODE_SIGN_STYLE = Automatic; GENERATE_INFOPLIST_FILE = YES; IPHONEOS_DEPLOYMENT_TARGET = 17.0; PRODUCT_BUNDLE_IDENTIFIER = com.kingz.AfterWork.AfterWork.tests; PRODUCT_NAME = "$(TARGET_NAME)"; SDKROOT = iphoneos; SUPPORTED_PLATFORMS = "iphoneos iphonesimulator"; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = "1,2"; TEST_HOST = "$(BUILT_PRODUCTS_DIR)/AfterWork.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/AfterWork"; }; name = Release; };
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		A40000000000000000000005 /* Build configuration list for PBXNativeTarget "AfterWorkTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A40000000000000000000010 /* Debug */,
+				A40000000000000000000011 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		CE665874307E20C500471218 /* Build configuration list for PBXProject "AfterWork" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -373,7 +461,6 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-        A40000000000000000000005 = {isa = XCConfigurationList; buildConfigurations = (A40000000000000000000010, A40000000000000000000011); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */

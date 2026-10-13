@@ -1,3 +1,16 @@
+## Stage 6 — Engagement
+
+Stage 6 adds server-backed activity engagement on `feature/stage-6-engagement`.
+
+- Feed cards respond to native swipes: left skips and right saves. A swipe never joins an activity; **I'm Going** is always explicit.
+- Save/Unsave and Skip persist per user in `activity_user_actions`. Skipped activities leave Feed but remain visible in Explore.
+- Join/Leave uses `activity_participants` and the authenticated user ID. `join_activity` locks the activity row and enforces `max_participants` atomically.
+- The activity organizer is inserted as `going` by an idempotent database trigger.
+- Details shows saved/going/full state, participant count, and a Participants screen with initials and public profile role information.
+- Profile loads real upcoming joined, saved, and created activity sections. RLS limits engagement writes to the current user; participant reads remain available for activity UI.
+
+Apply `supabase/migrations/20261013150000_stage6_engagement.sql` after the existing migrations before using Stage 6 against Supabase. Run `supabase/tests/005_activity_engagement.sql` in a disposable database to validate organizer attendance, idempotent joining, capacity, ownership RLS, and engagement state. Photos, comments, mentions, maps, calendar, notifications, and recommendations remain outside this stage.
+
 ## Stage 5 — Real Activities
 
 Stage 5 is implemented for review on `feature/stage-5-activities`. Stage 4 is merged into approved main. See [STAGE5.md](STAGE5.md) for the complete implementation report, file inventory, tests, manual verification and limitations.
