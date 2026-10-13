@@ -1,7 +1,9 @@
 import Foundation
 
 struct Activity: Identifiable {
-    let id: String
+    let id: UUID
+    let authorId: UUID
+    let categoryId: UUID
     let title: String
     let description: String
     let category: ActivityCategory
@@ -14,6 +16,12 @@ struct Activity: Identifiable {
     let organizerInitials: String
     let participantInitials: [String]
     var imageName: String? = nil
+    var endsAt: Date? = nil
+    var locationAddress: String? = nil
+    var coverImageURL: String? = nil
+    var categoryName: String? = nil
+
+    var categoryDisplayName: String { categoryName ?? category.displayName }
 
     var scheduleText: String {
         let calendar = Calendar.current

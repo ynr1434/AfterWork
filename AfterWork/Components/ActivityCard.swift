@@ -9,7 +9,7 @@ struct ActivityCard: View {
                 .frame(height: 210)
 
             VStack(alignment: .leading, spacing: AppSpacing.md) {
-                CategoryChip(category: activity.category)
+                CategoryChip(category: activity.category, title: activity.categoryDisplayName)
                 Text(activity.title)
                     .font(AppTypography.title)
                     .accessibilityAddTraits(.isHeader)
@@ -47,7 +47,13 @@ struct ActivityCard: View {
     }
 
     private var avatars: some View {
-        AvatarGroup(initials: activity.participantInitials, totalCount: activity.participantCount)
+        Group {
+            if activity.participantInitials.isEmpty {
+                AvatarView(initials: activity.organizerInitials)
+            } else {
+                AvatarGroup(initials: activity.participantInitials, totalCount: activity.participantCount)
+            }
+        }
             .accessibilityHidden(true)
     }
 

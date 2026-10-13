@@ -14,6 +14,7 @@ final class AuthManager {
     var message: String?
     private(set) var blockingError: String?
 
+    var userID: UUID? { session?.user.id }
     var email: String? { session?.user.email }
     var metadataName: String { user?.userMetadata["full_name"]?.stringValue ?? "" }
     var user: User? { session?.user }
