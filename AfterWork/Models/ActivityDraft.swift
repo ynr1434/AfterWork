@@ -50,7 +50,7 @@ nonisolated struct ActivityDraft {
 }
 
 nonisolated enum ActivityError: Error, LocalizedError {
-    case invalid(String), notFound, notOwner, requestFailed, signInRequired, categoriesUnavailable, full
+    case invalid(String), notFound, notOwner, requestFailed, signInRequired, categoriesUnavailable, full, organizerCannotLeave, network, server, duplicatePrimaryKey
 
     var errorDescription: String? {
         switch self {
@@ -61,6 +61,10 @@ nonisolated enum ActivityError: Error, LocalizedError {
         case .signInRequired: "Please sign in again to continue."
         case .categoriesUnavailable: "We couldn't load activity categories. Please try again."
         case .full: "This activity is full."
+        case .organizerCannotLeave: "The organizer stays Going while hosting this activity."
+        case .network: "The connection was interrupted. Please try again."
+        case .server: "The server couldn't complete that request. Please try again."
+        case .duplicatePrimaryKey: "The activity could not be confirmed. Please try again."
         }
     }
 }

@@ -73,28 +73,48 @@ struct ActivityRepository {
         }
     }
 
-    func createActivity(_ draft: ActivityDraft) async throws -> Activity {
-        try await perform {
+    func createActivity(_ draft: ActivityDraft, id: UUID = UUID()) async throws -> Activity {
+        let request = {
             let values = try ActivityValues(draft)
             let authorID = try await currentUserID()
             struct Creation: Encodable {
+                let id: UUID
                 let author_id: UUID
                 let values: ActivityValues
                 func encode(to encoder: Encoder) throws {
                     try values.encode(to: encoder)
                     var container = encoder.container(keyedBy: Key.self)
+                    try container.encode(id, forKey: .id)
                     try container.encode(author_id, forKey: .author_id)
                 }
-                enum Key: String, CodingKey { case author_id }
+                enum Key: String, CodingKey { case id, author_id }
             }
-            // One server mutation/representation response; no fallible second fetch
-            // that could report a confirmed create as failed and invite duplicate retries.
             let rows: [ActivityRecordDTO] = try await client.from("activities")
-                .insert(Creation(author_id: authorID, values: values))
-                .eq("going.status", value: "going").select(Self.selection).execute().value
+                .insert(Creation(id: id, author_id: authorID, values: values))
+                .select(Self.selection).execute().value
             guard let result = rows.first, result.row.authorId == authorID else { throw ActivityError.requestFailed }
             return result.activity()
         }
+        do { return try await perform(request) }
+        catch ActivityError.network {
+            #if DEBUG
+            print("[AfterWork] retrying idempotent activity create once")
+            #endif
+            try await Task.sleep(nanoseconds: 250_000_000)
+            do { return try await perform(request) }
+            catch ActivityError.duplicatePrimaryKey {
+                return try await recoverCreatedActivity(id: id, authorID: try await currentUserID())
+            }
+        }
+        catch ActivityError.duplicatePrimaryKey {
+            return try await recoverCreatedActivity(id: id, authorID: try await currentUserID())
+        }
+    }
+
+    private func recoverCreatedActivity(id: UUID, authorID: UUID) async throws -> Activity {
+        guard let activity = try await fetchActivity(id: id) else { throw ActivityError.requestFailed }
+        guard activity.authorId == authorID else { throw ActivityError.notOwner }
+        return activity
     }
 
     func updateActivity(id: UUID, draft: ActivityDraft) async throws -> Activity {
@@ -127,13 +147,29 @@ struct ActivityRepository {
             if let error = error as? ActivityError { throw error }
             if let error = error as? DatabaseError { throw error }
             if error is Supabase.AuthError { throw ActivityError.signInRequired }
-            if let error = error as? PostgrestError, ["PGRST301", "PGRST303"].contains(error.code ?? "") {
-                throw ActivityError.signInRequired
+            if let error = error as? URLError {
+                #if DEBUG
+                print("[AfterWork] activity network error code=\(error.code.rawValue)")
+                #endif
+                if [.timedOut, .networkConnectionLost, .cannotConnectToHost, .notConnectedToInternet].contains(error.code) {
+                    throw ActivityError.network
+                }
+            }
+            if let error = error as? PostgrestError {
+                #if DEBUG
+                print("[AfterWork] PostgREST error code=\(error.code ?? "nil")")
+                #endif
+                if ["PGRST301", "PGRST303"].contains(error.code ?? "") {
+                    throw ActivityError.signInRequired
+                }
+                if error.code == "23505" { throw ActivityError.duplicatePrimaryKey }
+                throw ActivityError.server
             }
             throw ActivityError.requestFailed
         }
     }
 }
+
 
 /// Only editable columns. Explicit nulls let editing clear optional values.
 private nonisolated struct ActivityValues: Encodable {

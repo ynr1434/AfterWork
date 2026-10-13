@@ -47,11 +47,13 @@ struct ActivityEngagementRepository {
         for action in actions {
             result[action.activityId] = ActivityEngagementState(isSaved: action.isSaved, isSkipped: action.isSkipped,
                                                                  isGoing: goingIDs.contains(action.activityId),
+                                                                 participantCount: initialsByActivity[action.activityId]?.count ?? 0,
                                                                  participantInitials: initialsByActivity[action.activityId])
         }
         for id in activityIds {
             if result[id]?.participantInitials == nil {
                 result[id]?.participantInitials = initialsByActivity[id]
+                result[id]?.participantCount = initialsByActivity[id]?.count ?? 0
                 result[id]?.isGoing = goingIDs.contains(id)
             }
         }
@@ -87,8 +89,9 @@ struct ActivityEngagementRepository {
         } catch { throw error }
     }
 
-    func leaveActivity(activityId: UUID) async throws -> ActivityEngagementState {
+    func leaveActivity(activityId: UUID, organizerID: UUID? = nil) async throws -> ActivityEngagementState {
         let userID = try await currentUserID()
+        if userID == organizerID { throw ActivityError.organizerCannotLeave }
         try await client.from("activity_participants").delete()
             .eq("activity_id", value: activityId.uuidString).eq("user_id", value: userID.uuidString)
             .execute()
@@ -154,6 +157,7 @@ struct ActivityEngagementRepository {
     private func state(_ action: ActivityUserActionDTO?, participants: [ParticipantDTO], userID: UUID) -> ActivityEngagementState {
         ActivityEngagementState(isSaved: action?.isSaved ?? false, isSkipped: action?.isSkipped ?? false,
                                  isGoing: participants.contains { $0.userId == userID && $0.status == .going },
-                                 participantCount: participants.count)
+                                 participantCount: participants.count,
+                                 participantInitials: participants.map(\.initials))
     }
 }

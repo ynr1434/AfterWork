@@ -125,6 +125,15 @@ final class ActivityTests: XCTestCase {
         XCTAssertEqual(EngagementRules.swipeAction(for: -120), .skip)
     }
 
+    func testEngagementErrorsRemainActionable() {
+        XCTAssertEqual(ActivityError.organizerCannotLeave.localizedDescription,
+                       "The organizer stays Going while hosting this activity.")
+        XCTAssertEqual(ActivityError.network.localizedDescription,
+                       "The connection was interrupted. Please try again.")
+        XCTAssertEqual(ActivityError.server.localizedDescription,
+                       "The server couldn't complete that request. Please try again.")
+    }
+
     func testFeedFilteringExcludesSkippedAndPastActivities() {
         let now = Date.now
         var skipped = MockActivities.preview

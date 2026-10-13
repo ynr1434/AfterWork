@@ -36,9 +36,12 @@ struct ActivityDetailsView: View {
                         Button(activity.isSaved ? "Saved" : "Save", systemImage: activity.isSaved ? "bookmark.fill" : "bookmark") {
                             Task { await engagement.save(activityId: activity.id, isSaved: !activity.isSaved) }
                         }.buttonStyle(.bordered)
-                        if activity.isGoing {
+                        if activity.authorId == auth.userID {
+                            Button("Organizer", systemImage: "checkmark.circle.fill") { }
+                                .buttonStyle(.borderedProminent).disabled(true)
+                        } else if activity.isGoing {
                             Button("Going", systemImage: "checkmark.circle.fill") {
-                                Task { await engagement.leave(activityId: activity.id) }
+                                Task { await engagement.leave(activityId: activity.id, organizerID: activity.authorId) }
                             }.buttonStyle(.borderedProminent)
                         } else {
                             let isFull = activity.maxParticipants.map { activity.participantCount >= $0 } ?? false

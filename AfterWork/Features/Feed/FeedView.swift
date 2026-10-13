@@ -35,9 +35,9 @@ struct FeedView: View {
                                 actionButton(activity.isSaved ? "Saved" : "Save", symbol: activity.isSaved ? "bookmark.fill" : "bookmark", color: AppColors.accent) {
                                     Task { await handle(activity.isSaved ? .unsave : .save, activity: activity) }
                                 }
-                                actionButton(activity.isGoing ? "Going" : "I'm Going", symbol: activity.isGoing ? "checkmark.circle.fill" : "checkmark", color: .green) {
+                                actionButton(activity.authorId == auth.userID ? "Organizer" : (activity.isGoing ? "Going" : "I'm Going"), symbol: activity.authorId == auth.userID || activity.isGoing ? "checkmark.circle.fill" : "checkmark", color: .green) {
                                     Task { await handle(activity.isGoing ? .leave : .join, activity: activity) }
-                                }
+                                }.disabled(activity.authorId == auth.userID)
                             }
                             HStack {
                                 Button("Previous", systemImage: "chevron.left") { index = max(0, index - 1) }
@@ -83,7 +83,7 @@ struct FeedView: View {
         case .unsave: await engagement.save(activityId: activity.id, isSaved: false)
         case .skip: await engagement.skip(activityId: activity.id)
         case .join: await engagement.join(activityId: activity.id)
-        case .leave: await engagement.leave(activityId: activity.id)
+        case .leave: await engagement.leave(activityId: activity.id, organizerID: activity.authorId)
         }
         if action == .skip { index += 1 }
         index = min(index, max(0, feedActivities.count - 1))

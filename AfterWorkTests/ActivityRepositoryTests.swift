@@ -79,10 +79,11 @@ final class ActivityRepositoryTests: XCTestCase {
         let fixture = try JSONSerialization.data(withJSONObject: [ActivityFixtures.json()])
         ActivityURLProtocol.handler = { request in
             XCTAssertEqual(request.httpMethod, "POST")
+            XCTAssertNil(self.query(request)["on_conflict"])
             let body = try self.body(request)
             XCTAssertEqual(body["author_id"] as? String, ActivityFixtures.authorID.uuidString)
             XCTAssertEqual(body["title"] as? String, "  Keep spaces  ")
-            XCTAssertNil(body["id"])
+            XCTAssertNotNil(body["id"] as? String)
             XCTAssertTrue(body["end_at"] is NSNull)
             XCTAssertTrue(body["location_address"] is NSNull)
             return (201, fixture)
@@ -92,6 +93,68 @@ final class ActivityRepositoryTests: XCTestCase {
         draft.categoryId = ActivityFixtures.categoryID
         let created = try await repository().createActivity(draft)
         XCTAssertEqual(created.authorId, ActivityFixtures.authorID)
+    }
+
+    func testCreateRetriesOnceWithSameIDAfterTransportLoss() async throws {
+        let fixture = try JSONSerialization.data(withJSONObject: [ActivityFixtures.json()])
+        var attempts = 0
+        var ids: [String] = []
+        ActivityURLProtocol.handler = { request in
+            attempts += 1
+            ids.append((try self.body(request))["id"] as? String ?? "")
+            if attempts == 1 { throw URLError(.networkConnectionLost) }
+            return (201, fixture)
+        }
+        var draft = ActivityDraft()
+        draft.title = "Retry me"
+        draft.categoryId = ActivityFixtures.categoryID
+        draft.locationName = "Office"
+        let created = try await repository().createActivity(draft, id: ActivityFixtures.activityID)
+        XCTAssertEqual(created.id, ActivityFixtures.activityID)
+        XCTAssertEqual(attempts, 2)
+        XCTAssertEqual(ids, [ActivityFixtures.activityID.uuidString, ActivityFixtures.activityID.uuidString])
+    }
+
+    func testDuplicateAfterRetryFetchesOwnedActivity() async throws {
+        let fixture = try JSONSerialization.data(withJSONObject: [ActivityFixtures.json()])
+        var attempts = 0
+        ActivityURLProtocol.handler = { request in
+            attempts += 1
+            if attempts == 1 {
+                let error = try JSONSerialization.data(withJSONObject: [
+                    "code": "23505", "message": "duplicate key value violates unique constraint"
+                ])
+                return (409, error)
+            }
+            XCTAssertEqual(request.httpMethod, "GET")
+            return (200, fixture)
+        }
+        var draft = ActivityDraft(); draft.title = "Already created"; draft.categoryId = ActivityFixtures.categoryID; draft.locationName = "Office"
+        let activity = try await repository().createActivity(draft, id: ActivityFixtures.activityID)
+        XCTAssertEqual(activity.id, ActivityFixtures.activityID)
+        XCTAssertEqual(attempts, 2)
+    }
+
+    func testDuplicateRecoveryRejectsDifferentOwner() async throws {
+        let other = UUID(uuidString: "61000000-0000-0000-0000-000000000001")!
+        var json = ActivityFixtures.json(); json["author_id"] = other.uuidString
+        let fixture = try JSONSerialization.data(withJSONObject: [json])
+        var attempts = 0
+        ActivityURLProtocol.handler = { request in
+            attempts += 1
+            if attempts == 1 {
+                let error = try JSONSerialization.data(withJSONObject: ["code": "23505", "message": "duplicate"])
+                return (409, error)
+            }
+            return (200, fixture)
+        }
+        var draft = ActivityDraft(); draft.title = "Owned elsewhere"; draft.categoryId = ActivityFixtures.categoryID; draft.locationName = "Office"
+        do {
+            _ = try await repository().createActivity(draft, id: ActivityFixtures.activityID)
+            XCTFail("Expected ownership rejection")
+        } catch let error as ActivityError {
+            XCTAssertEqual(error.localizedDescription, ActivityError.notOwner.localizedDescription)
+        }
     }
 
     func testUpdateCannotSendAuthorAndClearsNullableFields() async throws {

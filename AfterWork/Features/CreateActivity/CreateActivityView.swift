@@ -89,10 +89,6 @@ struct CreateActivityView: View {
                 if isPresentedAsSheet || model.isEditing {
                     ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.disabled(model.isSaving) }
                 }
-                ToolbarItemGroup(placement: .keyboard) {
-                    Spacer()
-                    Button("Done") { focused = nil }
-                }
             }
             .interactiveDismissDisabled(model.isSaving)
             .task { await model.loadCategories() }

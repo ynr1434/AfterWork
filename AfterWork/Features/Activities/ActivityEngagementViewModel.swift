@@ -51,9 +51,9 @@ final class ActivityEngagementViewModel {
         await mutate(activityId: activityId) { try await repository.joinActivity(activityId: activityId) }
     }
 
-    func leave(activityId: UUID) async {
+    func leave(activityId: UUID, organizerID: UUID? = nil) async {
         guard let repository else { return }
-        await mutate(activityId: activityId) { try await repository.leaveActivity(activityId: activityId) }
+        await mutate(activityId: activityId) { try await repository.leaveActivity(activityId: activityId, organizerID: organizerID) }
     }
 
     func participants(activityId: UUID) async -> [ParticipantDTO] {
