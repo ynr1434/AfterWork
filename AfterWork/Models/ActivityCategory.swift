@@ -3,6 +3,8 @@ import SwiftUI
 enum ActivityCategory: String, CaseIterable, Identifiable {
     case sports, games, food, drinks, movies, music, walking, creative, learning, boardGames, party, other
 
+    var databaseSlug: String { self == .boardGames ? "board_games" : rawValue }
+
     var id: String { rawValue }
 
     var displayName: String {

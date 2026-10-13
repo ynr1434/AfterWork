@@ -1,3 +1,5 @@
+Stage 4 authentication is implemented on `feature/stage-4-auth`. See [STAGE4.md](STAGE4.md) for architecture, validation results, the additive migration, and exact provider setup. Earlier stage notes below describe their original implementation and validation, not live provider verification. The local configuration example was deleted before Stage 4 and that deletion is preserved by request.
+
 # AfterWork
 
 AfterWork is an iOS app for coworkers to discover and join activities after work, from volleyball and cinema to coffee and board games.
@@ -112,7 +114,7 @@ DTOs intentionally remain separate from the Stage 2 `Activity` UI model. Future 
 
 ### Local Xcode configuration
 
-1. Copy `Configuration/Config.example.xcconfig` to `Configuration/Config.xcconfig`.
+1. Create the Git-ignored `Configuration/Config.xcconfig` using the settings below.
 2. Enter the project URL and **publishable** client key (recommended), or legacy **anon** key, from the Supabase project's Connect panel / Settings > API Keys.
 3. Write the URL with the xcconfig slash escape, for example:
 
@@ -126,7 +128,7 @@ DTOs intentionally remain separate from the Stage 2 `Activity` UI model. Future 
 
 The app compiles and launches when the local file is absent. Configuration requires HTTPS, rejects unresolved placeholders, rejects secret keys, and accepts legacy JWT keys only with role `anon`. The JWT payload check prevents accidental privileged-key use; it is not signature verification or authentication.
 
-Never commit local `Config.xcconfig`, `.env` files, database passwords, service-role keys, or secret API keys. Never put `service_role` or `sb_secret_` keys in an iOS app. Public client keys are intentionally extractable from a built app; RLS and an authenticated session protect the database. Do not publish configured build-setting dumps or build artifacts as secrets storage. The example config stays tracked and contains no credentials.
+Never commit local `Config.xcconfig`, `.env` files, database passwords, service-role keys, or secret API keys. Never put `service_role` or `sb_secret_` keys in an iOS app. Public client keys are intentionally extractable from a built app; RLS and an authenticated session protect the database. Do not publish configured build-setting dumps or build artifacts as secrets storage. The former example config deletion is preserved; the settings shown above contain placeholders only.
 
 ### Database migration
 
@@ -181,7 +183,7 @@ All eight tables have RLS enabled. Migration 001 grants no anonymous access; mig
 
 8. Get the **Project URL** from the project's **Connect** panel.
 9. Get the **publishable** key from **Settings > API Keys**, or the legacy public **anon** key. Never use a service-role or secret key.
-10. Copy `Configuration/Config.example.xcconfig` to `Configuration/Config.xcconfig` if the local file does not exist. A blank local copy was prepared during Stage 3.5. Do not overwrite a configured copy.
+10. Create `Configuration/Config.xcconfig` with the settings below if the local file does not exist. A blank local copy was prepared during Stage 3.5. Do not overwrite a configured copy.
 11. Paste the values **only into Configuration/Config.xcconfig**:
 
     ```xcconfig
