@@ -274,3 +274,14 @@ No live authenticated Supabase request has been tested because no project creden
 The local Config.xcconfig is blank and Git-ignored. Both migrations and their SQL security checks passed in the isolated PostgreSQL-compatible runtime. The initial migration remains unchanged. Missing-configuration handling remains covered by the Stage 3 Swift checks; the debug screen exposes only safe app errors. Live backend success requires the manual setup above.
 
 Debug and Release builds passed on iPhone 17 / iOS 26.1 Simulator. The Debug mock feed launched with blank configuration; the Profile checker showed Not configured before and after pressing Test. The Release binary excludes BackendDebugView and its test button.
+
+### Stage 8 — Comments & Mentions
+
+- Activity Details includes chronological comments with a validated composer.
+- Comment authors can edit or delete their own comments; backend RLS enforces ownership.
+- Typing `@` searches visible coworker profiles and inserts a stable user-ID mapping for mention persistence.
+- Mentions are rendered with emphasis and create in-app notifications through database triggers.
+- Comments on another user's activity create an activity-comment notification for the owner; self-comments are ignored.
+- Notifications are read from the current user's rows, support mark-as-read and activity navigation, and expose an unread tab badge.
+- The additive Stage 8 migration adds secure server-side notification triggers without granting notification INSERT access to clients.
+- Remote push delivery, realtime discussion, attachments, and advanced notification deduplication remain future work.

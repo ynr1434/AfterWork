@@ -74,6 +74,14 @@ insert into public.comments(activity_id,author_id,body) values ('20000000-0000-0
 select pg_temp.expect_error('insert into public.comments(activity_id,author_id,body) values (''20000000-0000-0000-0000-000000000001'',''10000000-0000-0000-0000-000000000002'',''Spoofed'')', '42501');
 update public.comments set body = 'Forbidden' where author_id <> auth.uid();
 select pg_temp.assert_true(not exists(select 1 from public.comments where body = 'Forbidden'), 'comment ownership');
+update public.comments set body = 'Owner comment edited'
+where id = '30000000-0000-0000-0000-000000000001';
+select pg_temp.assert_true((select body = 'Owner comment edited' from public.comments
+    where id = '30000000-0000-0000-0000-000000000001'), 'own comment update');
+insert into public.comments(activity_id, author_id, body)
+values ('20000000-0000-0000-0000-000000000001', auth.uid(), 'Temporary delete test');
+delete from public.comments where body = 'Temporary delete test';
+select pg_temp.assert_true(not exists(select 1 from public.comments where body = 'Temporary delete test'), 'own comment delete');
 insert into public.activity_photos(activity_id,uploader_id,storage_path) values
 ('20000000-0000-0000-0000-000000000001',auth.uid(),auth.uid()::text || '/photo.jpg');
 select pg_temp.expect_error('insert into public.activity_photos(activity_id,uploader_id,storage_path) values (''20000000-0000-0000-0000-000000000001'',auth.uid(),''someone-else/photo.jpg'')', '42501');

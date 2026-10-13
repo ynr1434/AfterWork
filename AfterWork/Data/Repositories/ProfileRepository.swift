@@ -18,6 +18,20 @@ struct ProfileRepository {
         }
     }
 
+    func searchProfiles(query: String, limit: Int = 8) async throws -> [ProfileDTO] {
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return [] }
+        do {
+            return try await client.from("profiles")
+                .select("id,email,display_name,avatar_url,department,job_title,interests,created_at,updated_at")
+                .ilike("display_name", pattern: "(trimmed)%")
+                .order("display_name").limit(limit).execute().value
+        } catch {
+            if error is CancellationError || Task.isCancelled { throw CancellationError() }
+            throw DatabaseError.requestFailed
+        }
+    }
+
     /// The RPC derives identity/email from the authenticated JWT; all fields save atomically.
     func save(_ draft: ProfileDraft) async throws -> ProfileDTO {
         guard draft.validationMessage == nil else { throw AppAuthError.invalidProfile }

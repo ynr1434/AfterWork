@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MainTabView: View {
     @State private var activities = ActivityListViewModel()
+    @State private var notifications = NotificationsViewModel()
     @Environment(AuthManager.self) private var auth
     var body: some View {
         TabView {
@@ -20,10 +21,11 @@ struct MainTabView: View {
                     Label("Create", systemImage: "plus.circle.fill")
                 }
 
-            NotificationsView()
+            NotificationsView(model: notifications)
                 .tabItem {
                     Label("Notifications", systemImage: "bell.fill")
                 }
+                .badge(notifications.unreadCount)
 
             ProfileView()
                 .tabItem {
