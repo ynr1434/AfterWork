@@ -26,6 +26,26 @@ struct ProfileRepository {
             let p_department: String?
             let p_job_title: String?
             let p_interests: [String]
+
+            enum CodingKeys: String, CodingKey {
+                case p_display_name, p_department, p_job_title, p_interests
+            }
+
+            func encode(to encoder: Encoder) throws {
+                var container = encoder.container(keyedBy: CodingKeys.self)
+                try container.encode(p_display_name, forKey: .p_display_name)
+                if let p_department {
+                    try container.encode(p_department, forKey: .p_department)
+                } else {
+                    try container.encodeNil(forKey: .p_department)
+                }
+                if let p_job_title {
+                    try container.encode(p_job_title, forKey: .p_job_title)
+                } else {
+                    try container.encodeNil(forKey: .p_job_title)
+                }
+                try container.encode(p_interests, forKey: .p_interests)
+            }
         }
         do {
             let rows: [ProfileDTO] = try await client.rpc("save_my_profile", params: Parameters(
