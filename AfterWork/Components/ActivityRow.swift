@@ -33,7 +33,7 @@ struct ActivityRow: View {
 
     private var details: some View {
         VStack(alignment: .leading, spacing: AppSpacing.xs) {
-            Text(activity.category.displayName)
+            Text(activity.categoryDisplayName)
                 .font(AppTypography.caption)
                 .foregroundStyle(AppColors.secondaryText)
             Text(activity.title).font(AppTypography.headline)

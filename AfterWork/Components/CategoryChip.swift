@@ -3,9 +3,10 @@ import SwiftUI
 struct CategoryChip: View {
     let category: ActivityCategory
     var isSelected = false
+    var title: String? = nil
 
     var body: some View {
-        Label(category.displayName, systemImage: category.symbol)
+        Label(title ?? category.displayName, systemImage: category.symbol)
             .font(AppTypography.caption.weight(.semibold))
             .padding(.horizontal, AppSpacing.md)
             .padding(.vertical, AppSpacing.sm)

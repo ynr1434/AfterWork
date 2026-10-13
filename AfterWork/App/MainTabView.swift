@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct MainTabView: View {
+    @State private var activities = ActivityListViewModel()
+    @Environment(AuthManager.self) private var auth
     var body: some View {
         TabView {
             FeedView()
@@ -29,6 +31,13 @@ struct MainTabView: View {
                 }
         }
         .tint(AppColors.accent)
+        .environment(activities)
+        .task(id: "\(activities.selectedCategoryId?.uuidString ?? "all")-\(activities.revision)") {
+            await activities.load(refresh: true)
+        }
+        .onChange(of: activities.needsAuthentication) { _, needed in
+            if needed { Task { await auth.restore() } }
+        }
     }
 }
 

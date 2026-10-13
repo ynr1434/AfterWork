@@ -1,94 +1,71 @@
 import SwiftUI
 
 struct FeedView: View {
-    @State private var category: ActivityCategory?
+    @Environment(ActivityListViewModel.self) private var model
     @State private var index = 0
-    @State private var feedback: String?
-
-    private var activities: [Activity] {
-        MockActivities.activities.filter { category == nil || $0.category == category }
-    }
 
     var body: some View {
+        @Bindable var model = model
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: AppSpacing.lg) {
                     Text("What's happening after work?")
-                        .font(AppTypography.body)
-                        .foregroundStyle(AppColors.secondaryText)
+                        .font(AppTypography.body).foregroundStyle(AppColors.secondaryText)
                         .padding(.horizontal, AppSpacing.lg)
-
-                    CategoryFilter(selection: $category)
-
-                    if activities.isEmpty {
-                        VStack(spacing: AppSpacing.md) {
-                            Text("More plans are on the way")
-                                .font(AppTypography.headline)
-                            Text("There are no sample activities in this category yet.")
-                                .foregroundStyle(AppColors.secondaryText)
-                            SecondaryButton(title: "Show all activities") { category = nil }
-                        }
-                        .padding(AppSpacing.lg)
-                    } else {
+                    CategoryFilter(selection: $model.selectedCategoryId, categories: model.categories)
+                    if !model.visibleActivities.isEmpty {
+                        let activities = model.visibleActivities
                         let activity = activities[min(index, activities.count - 1)]
                         VStack(spacing: AppSpacing.lg) {
-                            ActivityCard(activity: activity)
-                            HStack(alignment: .top, spacing: AppSpacing.lg) {
-                                action("Skip", symbol: "xmark", color: .secondary) {
-                                    index = (index + 1) % activities.count
-                                }
-                                action("Save", symbol: "bookmark", color: AppColors.accent) {
-                                    feedback = "Saving activities is coming soon. This is a visual preview."
-                                }
-                                action("Going", symbol: "checkmark", color: .green) {
-                                    feedback = "Joining activities is coming soon. This is a visual preview."
-                                }
+                            NavigationLink {
+                                ActivityDetailsView(id: activity.id)
+                            } label: { ActivityCard(activity: activity) }
+                                .buttonStyle(.plain)
+                                .accessibilityHint("Opens activity details")
+                            HStack(spacing: AppSpacing.lg) {
+                                unavailableAction("Skip", symbol: "xmark", color: .secondary)
+                                unavailableAction("Save", symbol: "bookmark", color: AppColors.accent)
+                                unavailableAction("Going", symbol: "checkmark", color: .green)
                             }
-                            Text("Sample activities · \(min(index + 1, activities.count)) of \(activities.count)")
-                                .font(AppTypography.caption)
-                                .foregroundStyle(AppColors.secondaryText)
-                        }
-                        .padding(.horizontal, AppSpacing.lg)
+                            Text("Joining, saving, and skipping are coming soon.")
+                                .font(AppTypography.caption).foregroundStyle(AppColors.secondaryText)
+                            HStack {
+                                Button("Previous", systemImage: "chevron.left") { index = max(0, index - 1) }
+                                    .disabled(index == 0)
+                                Spacer()
+                                Text("\(min(index + 1, activities.count)) of \(activities.count)")
+                                    .font(AppTypography.caption).foregroundStyle(.secondary)
+                                Spacer()
+                                Button("Next", systemImage: "chevron.right") { index += 1 }
+                                    .disabled(index >= activities.count - 1)
+                            }
+                        }.padding(.horizontal, AppSpacing.lg)
                     }
+                    ActivityListStatusView()
                 }
-                .frame(maxWidth: 600)
-                .frame(maxWidth: .infinity)
+                .frame(maxWidth: 600).frame(maxWidth: .infinity)
                 .padding(.vertical, AppSpacing.md)
             }
+            .refreshable { await model.load(refresh: true) }
             .background(AppColors.appBackground)
             .navigationTitle("AfterWork")
-            .onChange(of: category) { index = 0 }
-            .alert("Stage 2 preview", isPresented: Binding(
-                get: { feedback != nil },
-                set: { if !$0 { feedback = nil } }
-            )) {
-                Button("Got it", role: .cancel) { feedback = nil }
-            } message: {
-                Text(feedback ?? "")
-            }
+            .onChange(of: model.selectedCategoryId) { index = 0 }
+            .onChange(of: model.activities.map(\.id)) { index = min(index, max(0, model.visibleActivities.count - 1)) }
         }
     }
 
-    private func action(_ title: String, symbol: String, color: Color, perform: @escaping () -> Void) -> some View {
-        Button(action: perform) {
+    private func unavailableAction(_ title: String, symbol: String, color: Color) -> some View {
+        Button {} label: {
             VStack(spacing: AppSpacing.sm) {
-                Image(systemName: symbol)
-                    .font(.title2.weight(.semibold))
-                    .foregroundStyle(AppColors.primaryText)
-                    .frame(width: 60, height: 60)
-                    .background(color.opacity(0.15), in: Circle())
-                Text(title)
-                    .font(AppTypography.caption.weight(.semibold))
-                    .foregroundStyle(AppColors.primaryText)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .frame(maxWidth: .infinity, minHeight: 44)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(title == "Skip" ? "Skip to next sample activity" : "\(title), preview")
+                Image(systemName: symbol).font(.title2.weight(.semibold))
+                    .frame(width: 60, height: 60).background(color.opacity(0.15), in: Circle())
+                Text(title).font(AppTypography.caption.weight(.semibold))
+            }.frame(maxWidth: .infinity, minHeight: 44)
+        }.buttonStyle(.plain).disabled(true).opacity(0.5)
+            .accessibilityLabel("\(title), coming soon")
     }
 }
 
-#Preview { FeedView() }
-#Preview("Dark") { FeedView().preferredColorScheme(.dark) }
+#Preview {
+    FeedView().environment(ActivityListViewModel()).environment(AuthManager())
+}

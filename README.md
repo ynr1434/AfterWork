@@ -1,4 +1,17 @@
-Stage 4 authentication is implemented on `feature/stage-4-auth`. See [STAGE4.md](STAGE4.md) for architecture, validation results, the additive migration, and exact provider setup. Earlier stage notes below describe their original implementation and validation, not live provider verification. The local configuration example was deleted before Stage 4 and that deletion is preserved by request.
+## Stage 5 — Real Activities
+
+Stage 5 is implemented for review on `feature/stage-5-activities`. Stage 4 is merged into approved main. See [STAGE5.md](STAGE5.md) for the complete implementation report, file inventory, tests, manual verification and limitations.
+
+- Feed and Explore use real Supabase records, real category UUID filters, pull-to-refresh, loading/empty/error states, and bounded pagination. There is no silent mock fallback.
+- `ActivityRepository` now supports categories, upcoming/category/author reads, detail reads, and create/update/delete. It reuses the existing client and derives ownership from the SDK session.
+- One relational query embeds category, organizer and attendance count filtered to `going`. Domain IDs are UUIDs; timestamps remain Date/timestamptz with local display and exclusive Today/Tomorrow/This Week/Later groups.
+- One native form handles creation and author-only editing; details include a confirmed author-only deletion flow. Join/Save/Skip remain clearly unavailable.
+- Existing activity RLS and column grants support this stage unchanged. **No new migration is required or deployed.** The rollback-only `supabase/tests/004_activity_crud.sql` verifies ownership and CRUD constraints in a disposable database.
+- Debug/Release simulator builds, 25 XCTest cases and isolated SQL checks pass. The live DEBUG category checker returned **Connected — 12 categories found**. Live activity CRUD verification still requires a signed-in simulator session; no temporary activity has yet been written by validation.
+
+Use the configured project and a test account, create one disposable future activity, verify its UUID in Supabase/Feed/Explore/Details, edit and clear optional fields, then confirm deletion removes only that test UUID. Full steps and provider prerequisites are in [STAGE5.md](STAGE5.md#manual-live-verification).
+
+Stage 4 authentication was merged into `main` from `feature/stage-4-auth`. See [STAGE4.md](STAGE4.md) for architecture, validation results, the additive migration, and exact provider setup. Earlier stage notes below describe their original implementation and validation, not live provider verification. The local configuration example was deleted before Stage 4 and that deletion is preserved by request.
 
 # AfterWork
 
@@ -217,6 +230,7 @@ References: [Swift initialization](https://supabase.com/docs/reference/swift/ini
     -module-cache-path /tmp/AfterWork-Stage3-test-cache \
     AfterWork/Core/Supabase/DatabaseError.swift \
     AfterWork/Core/Supabase/SupabaseConfiguration.swift \
+    AfterWork/Models/Activity.swift AfterWork/Models/ActivityCategory.swift \
     AfterWork/Data/DTO/*.swift Tests/Stage3FoundationChecks.swift \
     -o /tmp/AfterWork-Stage3-checks
   /tmp/AfterWork-Stage3-checks
