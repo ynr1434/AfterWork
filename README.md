@@ -28,6 +28,24 @@ Stage 4 authentication was merged into `main` from `feature/stage-4-auth`. See [
 
 # AfterWork
 
+## Stage 7 — Calendar & Local Reminders
+
+Stage 7 adds device-local Apple Calendar and reminder support for activities the
+current user is going to. Calendar access is requested only when the user taps
+**Add to Calendar**; the app uses the default writable calendar and stores the
+activity-to-event identifier mapping only in local `UserDefaults`. Existing
+mapped events are reused and updated instead of duplicated, and only events
+created through that mapping can be removed by AfterWork.
+
+Local notifications are requested only when a reminder is selected. Supported
+options are none, 10 minutes, 30 minutes, and 1 hour before the activity. A
+stable activity-based identifier replaces an existing reminder, skips reminders
+whose calculated time has passed, and cancels reminders when a non-organizer
+leaves. Calendar events are preserved on leave and can be removed manually;
+activity edits update the mapped event and reschedule its reminder after the
+backend save succeeds. Calendar events, permissions, and reminders are
+device-local and are not stored in Supabase or synchronized between devices.
+
 AfterWork is an iOS app for coworkers to discover and join activities after work, from volleyball and cinema to coffee and board games.
 
 ## Tech stack

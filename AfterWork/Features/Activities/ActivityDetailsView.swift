@@ -6,6 +6,7 @@ struct ActivityDetailsView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var model: ActivityDetailsViewModel
     @State private var engagement = ActivityEngagementViewModel()
+    @State private var schedule = ActivityScheduleViewModel()
     @State private var isEditing = false
     @State private var confirmDelete = false
 
@@ -41,7 +42,10 @@ struct ActivityDetailsView: View {
                                 .buttonStyle(.borderedProminent).disabled(true)
                         } else if activity.isGoing {
                             Button("Going", systemImage: "checkmark.circle.fill") {
-                                Task { await engagement.leave(activityId: activity.id, organizerID: activity.authorId) }
+                                Task {
+                                    await engagement.leave(activityId: activity.id, organizerID: activity.authorId)
+                                    if engagement.errorMessage == nil { schedule.cancelReminder(activityID: activity.id) }
+                                }
                             }.buttonStyle(.borderedProminent)
                         } else {
                             let isFull = activity.maxParticipants.map { activity.participantCount >= $0 } ?? false
@@ -60,6 +64,30 @@ struct ActivityDetailsView: View {
                         }
                     }.buttonStyle(.plain)
                     if let error = engagement.errorMessage { Text(error).foregroundStyle(.red) }
+                    if activity.isGoing || activity.authorId == auth.userID {
+                        VStack(alignment: .leading, spacing: AppSpacing.sm) {
+                            Text("Calendar & Reminder").font(AppTypography.headline)
+                            Button(schedule.isCalendarAdded ? "Added to Calendar" : "Add to Calendar",
+                                   systemImage: schedule.isCalendarAdded ? "calendar.badge.checkmark" : "calendar.badge.plus") {
+                                Task { await schedule.addOrUpdateCalendar(activity: activity) }
+                            }.buttonStyle(.bordered).disabled(schedule.isBusy)
+                            if schedule.isCalendarAdded {
+                                Button("Remove Calendar Event", systemImage: "calendar.badge.minus") {
+                                    Task { await schedule.removeCalendar(activityID: activity.id) }
+                                }.buttonStyle(.bordered).disabled(schedule.isBusy)
+                            }
+                            Picker("Reminder", selection: Binding(
+                                get: { schedule.reminder },
+                                set: { option in Task { await schedule.setReminder(option, activity: activity) } }
+                            )) {
+                                ForEach(ActivityReminderOption.allCases) { option in
+                                    Text(option.title).tag(option)
+                                }
+                            }.disabled(schedule.isBusy)
+                            if let error = schedule.errorMessage { Text(error).font(.footnote).foregroundStyle(.red) }
+                        }
+                        .padding(.top, AppSpacing.sm)
+                    }
                     if activity.authorId == auth.userID {
                         Button("Edit Activity") { isEditing = true }.buttonStyle(.borderedProminent)
                             .disabled(model.isDeleting || model.isLoading)
@@ -80,18 +108,27 @@ struct ActivityDetailsView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task {
             await model.load()
-            if let activity = model.activity { await engagement.load(activityIDs: [activity.id]) }
+            if let activity = model.activity {
+                await engagement.load(activityIDs: [activity.id])
+                await schedule.configure(activity: engagement.state(for: activity))
+            }
         }
         .refreshable {
             await model.load()
-            if let activity = model.activity { await engagement.load(activityIDs: [activity.id]) }
+            if let activity = model.activity {
+                await engagement.load(activityIDs: [activity.id])
+                await schedule.configure(activity: engagement.state(for: activity))
+            }
         }
         .onChange(of: model.needsAuthentication) { _, needed in
             if needed { Task { await auth.restore() } }
         }
         .sheet(isPresented: $isEditing) {
             if let activity = model.activity {
-                CreateActivityView(activity: activity, isPresentedAsSheet: true) { saved in model.didSave(saved) }
+                CreateActivityView(activity: activity, isPresentedAsSheet: true) { saved in
+                    model.didSave(saved)
+                    Task { await schedule.didSave(activity: saved) }
+                }
             }
         }
         .alert("Delete Activity?", isPresented: $confirmDelete) {
@@ -99,6 +136,7 @@ struct ActivityDetailsView: View {
             Button("Delete", role: .destructive) {
                 Task {
                     if await model.remove(userID: auth.userID) {
+                        await schedule.removeAll(activityID: model.id)
                         activities.didDelete(id: model.id)
                         dismiss()
                     }
