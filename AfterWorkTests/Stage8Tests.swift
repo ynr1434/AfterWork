@@ -15,6 +15,12 @@ final class Stage8Tests: XCTestCase {
         XCTAssertEqual(MentionComposer.uniqueUserIDs([id, id]).count, 1)
     }
 
+    func testMentionSearchPatternUsesTrimmedQueryPrefix() {
+        XCTAssertEqual(MentionSearchPattern.prefix(for: "  Ali  "), "Ali%")
+        XCTAssertNotEqual(MentionSearchPattern.prefix(for: "Ali"), "(trimmed)%")
+        XCTAssertNil(MentionSearchPattern.prefix(for: "  \n "))
+    }
+
     func testNotificationKindMappingAndUnreadCount() {
         XCTAssertEqual(NotificationKind(rawValue: "mention"), .mention)
         XCTAssertEqual(NotificationKind(rawValue: "activityComment"), .activityComment)
