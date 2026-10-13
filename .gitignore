@@ -1,0 +1,12 @@
+# Local backend configuration (never commit credentials).
+Config.xcconfig
+.env
+.env.*
+!.env.example
+
+# Local build and Supabase tooling artifacts.
+.DS_Store
+DerivedData/
+.build/
+supabase/.temp/
+supabase/.branches/

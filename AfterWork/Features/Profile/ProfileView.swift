@@ -33,6 +33,18 @@ struct ProfileView: View {
             }
             .background(AppColors.appBackground)
             .navigationTitle("Profile")
+            #if DEBUG
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    NavigationLink {
+                        BackendDebugView()
+                    } label: {
+                        Label("Backend Connection", systemImage: "wrench.and.screwdriver")
+                    }
+                    .accessibilityLabel("Development: Backend Connection")
+                }
+            }
+            #endif
         }
     }
 
