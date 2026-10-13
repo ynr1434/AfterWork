@@ -10,11 +10,14 @@ struct Activity: Identifiable {
     // A single date holds both the local day and start time.
     let startsAt: Date
     let locationName: String
-    let participantCount: Int
+    var participantCount: Int
     let maxParticipants: Int?
     let organizerName: String
     let organizerInitials: String
-    let participantInitials: [String]
+    var participantInitials: [String]
+    var isSaved = false
+    var isSkipped = false
+    var isGoing = false
     var imageName: String? = nil
     var endsAt: Date? = nil
     var locationAddress: String? = nil

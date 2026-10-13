@@ -118,6 +118,26 @@ final class ActivityTests: XCTestCase {
         XCTAssertEqual(missing.activity().participantCount, 0)
         XCTAssertEqual(missing.activity().organizerName, "Organizer unavailable")
     }
+
+    func testSwipeThresholdRequiresMeaningfulMovement() {
+        XCTAssertNil(EngagementRules.swipeAction(for: 119))
+        XCTAssertEqual(EngagementRules.swipeAction(for: 120), .save)
+        XCTAssertEqual(EngagementRules.swipeAction(for: -120), .skip)
+    }
+
+    func testFeedFilteringExcludesSkippedAndPastActivities() {
+        let now = Date.now
+        var skipped = MockActivities.preview
+        skipped.isSkipped = true
+        var past = MockActivities.preview
+        past = Activity(id: past.id, authorId: past.authorId, categoryId: past.categoryId,
+                        title: past.title, description: past.description, category: past.category,
+                        startsAt: now.addingTimeInterval(-60), locationName: past.locationName,
+                        participantCount: past.participantCount, maxParticipants: past.maxParticipants,
+                        organizerName: past.organizerName, organizerInitials: past.organizerInitials,
+                        participantInitials: past.participantInitials)
+        XCTAssertTrue(EngagementRules.feedActivities([skipped, past], now: now).isEmpty)
+    }
 }
 
 @MainActor

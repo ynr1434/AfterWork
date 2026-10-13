@@ -39,6 +39,18 @@ final class ActivityListViewModel {
         ActivityDayGroup.upcoming(activities).filter { selectedCategoryId == nil || $0.categoryId == selectedCategoryId }
     }
 
+    func applyEngagement(_ states: [UUID: ActivityEngagementState]) {
+        activities = activities.map { activity in
+            guard let state = states[activity.id] else { return activity }
+            var result = activity
+            result.isSaved = state.isSaved
+            result.isSkipped = state.isSkipped
+            result.isGoing = state.isGoing
+            if let participantCount = state.participantCount { result.participantCount = participantCount }
+            return result
+        }
+    }
+
     func load(refresh: Bool = false, more: Bool = false) async {
         let category = selectedCategoryId
         if isLoading, requestCategory == category, let request {

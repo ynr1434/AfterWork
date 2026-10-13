@@ -53,6 +53,16 @@ struct ActivityRepository {
         }
     }
 
+    func fetchActivities(ids: [UUID]) async throws -> [Activity] {
+        guard !ids.isEmpty else { return [] }
+        return try await perform {
+            let rows: [ActivityRecordDTO] = try await client.from("activities").select(Self.selection)
+                .in("id", values: ids.map(\.uuidString)).eq("going.status", value: "going")
+                .order("start_at").order("id").execute().value
+            return rows.map { $0.activity() }
+        }
+    }
+
     func fetchActivitiesCreatedByCurrentUser(limit: Int = 50) async throws -> [Activity] {
         try await perform {
             let userID = try await currentUserID()

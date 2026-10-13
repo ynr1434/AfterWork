@@ -50,7 +50,7 @@ nonisolated struct ActivityDraft {
 }
 
 nonisolated enum ActivityError: Error, LocalizedError {
-    case invalid(String), notFound, notOwner, requestFailed, signInRequired, categoriesUnavailable
+    case invalid(String), notFound, notOwner, requestFailed, signInRequired, categoriesUnavailable, full
 
     var errorDescription: String? {
         switch self {
@@ -60,6 +60,7 @@ nonisolated enum ActivityError: Error, LocalizedError {
         case .requestFailed: "We couldn't complete the request. Check your connection and try again."
         case .signInRequired: "Please sign in again to continue."
         case .categoriesUnavailable: "We couldn't load activity categories. Please try again."
+        case .full: "This activity is full."
         }
     }
 }
