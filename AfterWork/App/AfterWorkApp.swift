@@ -11,7 +11,7 @@ import SwiftUI
 struct AfterWorkApp: App {
     var body: some Scene {
         WindowGroup {
-            MainTabView()
+            RootView()
         }
     }
 }

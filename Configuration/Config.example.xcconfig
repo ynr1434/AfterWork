@@ -1,4 +1,0 @@
-// Copy to Config.xcconfig in this folder. Use only a public publishable/anon key.
-// xcconfig treats // as a comment: write the URL as https:/$()/PROJECT.supabase.co
-SUPABASE_URL =
-SUPABASE_ANON_KEY =

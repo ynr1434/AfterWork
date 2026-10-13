@@ -10,3 +10,6 @@ DerivedData/
 .build/
 supabase/.temp/
 supabase/.branches/
+
+# Local Xcode window state.
+*.xcuserstate

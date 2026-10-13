@@ -8,6 +8,18 @@ nonisolated struct ProfileDTO: Codable, Identifiable, Sendable {
     let avatarUrl: String?
     let department: String?
     let jobTitle: String?
+    let interests: [String]?
+
+    var isComplete: Bool {
+        let name = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return !name.isEmpty && name.count <= 100
+    }
+
+    var initials: String {
+        let parts = displayName.split(whereSeparator: \.isWhitespace)
+        return parts.prefix(2).compactMap { $0.first.map(String.init) }.joined().uppercased()
+    }
+
     let createdAt: Date
     let updatedAt: Date
 
@@ -18,6 +30,7 @@ nonisolated struct ProfileDTO: Codable, Identifiable, Sendable {
         case avatarUrl = "avatar_url"
         case department
         case jobTitle = "job_title"
+        case interests
         case createdAt = "created_at"
         case updatedAt = "updated_at"
     }

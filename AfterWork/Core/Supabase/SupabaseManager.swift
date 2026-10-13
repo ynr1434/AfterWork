@@ -14,7 +14,8 @@ final class SupabaseManager {
             let configuration = try SupabaseConfiguration.load()
             let client = SupabaseClient(
                 supabaseURL: configuration.url,
-                supabaseKey: configuration.publicKey
+                supabaseKey: configuration.publicKey,
+                options: .init(auth: .init(flowType: .pkce, emitLocalSessionAsInitialSession: true))
             )
             cachedClient = client
             return client

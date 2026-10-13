@@ -1,21 +1,40 @@
 import SwiftUI
 
 struct ProfileView: View {
+    @Environment(AuthManager.self) private var auth
+    @State private var isEditing = false
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: AppSpacing.lg) {
                     VStack(spacing: AppSpacing.sm) {
-                        AvatarView(initials: "YN", size: 88)
+                        AvatarView(initials: auth.profile?.initials ?? "", size: 88)
                             .accessibilityHidden(true)
-                        Text("Yernar").font(AppTypography.title)
-                        Text("Product Designer").font(AppTypography.headline)
-                        Text("Digital Products")
+                        Text(auth.profile?.displayName ?? "").font(AppTypography.title)
+                        if let title = auth.profile?.jobTitle { Text(title).font(AppTypography.headline) }
+                        if let department = auth.profile?.department { Text(department)
                             .font(AppTypography.body)
                             .foregroundStyle(AppColors.secondaryText)
+                        }
+                        if let email = auth.profile?.email ?? auth.email {
+                            Text(email).font(AppTypography.body).foregroundStyle(AppColors.secondaryText)
+                        }
                     }
                     .frame(maxWidth: .infinity)
                     .padding(AppSpacing.lg)
+
+                    VStack(alignment: .leading, spacing: AppSpacing.sm) {
+                        Text("Interests").font(AppTypography.headline)
+                        let selected = ActivityCategory.allCases.filter {
+                            auth.profile?.interests?.contains($0.databaseSlug) == true
+                        }
+                        if selected.isEmpty { Text("Add interests in Edit Profile").foregroundStyle(.secondary) }
+                        ForEach(selected) { category in
+                            Label(category.displayName, systemImage: category.symbol)
+                        }
+                    }.frame(maxWidth: .infinity, alignment: .leading)
+                    Button("Edit Profile") { auth.message = nil; isEditing = true }
+                        .buttonStyle(.borderedProminent).disabled(auth.isBusy)
 
                     VStack(spacing: AppSpacing.md) {
                         statistic("Upcoming", symbol: "calendar", count: 3)
@@ -23,9 +42,13 @@ struct ProfileView: View {
                         statistic("Joined", symbol: "person.2", count: 8)
                         statistic("Saved", symbol: "bookmark", count: 4)
                     }
-                    Text("Sample profile · Just a preview for now")
+                    Text("Activity counts are previews")
                         .font(AppTypography.caption)
                         .foregroundStyle(AppColors.secondaryText)
+                    Button("Sign Out", role: .destructive) { Task { await auth.signOut() } }
+                        .disabled(auth.isBusy)
+                    if auth.isBusy { ProgressView() }
+                    if let message = auth.message { Text(message).foregroundStyle(.red) }
                 }
                 .padding(AppSpacing.lg)
                 .frame(maxWidth: 600)
@@ -33,6 +56,7 @@ struct ProfileView: View {
             }
             .background(AppColors.appBackground)
             .navigationTitle("Profile")
+            .sheet(isPresented: $isEditing) { OnboardingView(isEditing: true).environment(auth) }
             #if DEBUG
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -62,4 +86,4 @@ struct ProfileView: View {
     }
 }
 
-#Preview { ProfileView() }
+#Preview { ProfileView().environment(AuthManager()) }
