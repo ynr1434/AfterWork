@@ -19,12 +19,12 @@ struct EmptyStateView: View {
                     .accessibilityHidden(true)
 
                 Text(title)
-                    .font(AppTypography.headline)
+                    .font(AppTypography.title)
 
                 if let subtitle {
                     Text(subtitle)
                         .font(AppTypography.body)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(AppColors.secondaryText)
                 }
             }
             .multilineTextAlignment(.center)
@@ -33,6 +33,7 @@ struct EmptyStateView: View {
             .frame(maxHeight: .infinity)
         }
         .defaultScrollAnchor(.center)
+        .background(AppColors.appBackground)
     }
 }
 

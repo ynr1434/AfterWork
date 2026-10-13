@@ -1,18 +1,31 @@
 import SwiftUI
 
 struct CreateActivityView: View {
+    @State private var showsPreviewMessage = false
+
     var body: some View {
         NavigationStack {
             EmptyStateView(
                 icon: "plus.circle.fill",
-                title: "Bring people together",
-                subtitle: "A place to plan an activity and invite coworkers will be here soon."
+                title: "Create an activity",
+                subtitle: "Invite coworkers to join you after work."
             )
-            .navigationTitle("Create Activity")
+            .safeAreaInset(edge: .bottom) {
+                PrimaryButton(title: "Create activity", symbol: "plus") {
+                    showsPreviewMessage = true
+                }
+                .frame(maxWidth: 500)
+                .padding(AppSpacing.lg)
+                .background(AppColors.appBackground)
+            }
+            .navigationTitle("Create")
+            .alert("Your next plan starts here", isPresented: $showsPreviewMessage) {
+                Button("Got it", role: .cancel) {}
+            } message: {
+                Text("Activity creation is coming in a future update.")
+            }
         }
     }
 }
 
-#Preview {
-    CreateActivityView()
-}
+#Preview { CreateActivityView() }

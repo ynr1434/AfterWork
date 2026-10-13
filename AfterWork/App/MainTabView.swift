@@ -28,6 +28,7 @@ struct MainTabView: View {
                     Label("Profile", systemImage: "person.crop.circle.fill")
                 }
         }
+        .tint(AppColors.accent)
     }
 }
 

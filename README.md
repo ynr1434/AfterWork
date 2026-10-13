@@ -13,44 +13,52 @@ AfterWork is an iOS app for coworkers to discover and join activities after work
 
 ## Current stage
 
-Stage 1 — project foundation
+Stage 2 — visual foundation and mock activity feed
 
 Current implemented features:
 
-- Base architecture with feature-oriented folders
-- TabView with Feed, Explore, Create, Notifications, and Profile
-- Placeholder feature screens, each with its own NavigationStack
-- Basic design tokens: AppSpacing, AppCornerRadius, AppTypography
-- Reusable EmptyStateView with an SF Symbol, title, and optional subtitle
+- Five native tabs with independent NavigationStacks
+- One prominent activity card in Feed, category filters, and local sample browsing
+- Explore rows grouped into Today, Tomorrow, This week, and Coming up when needed
+- Six mock activities with relative dates, participant counts, and organizer information
+- Category-based SwiftUI cover artwork; no remote images
+- Polished Create and Notifications empty states, plus a static sample profile
+- Semantic Light/Dark colors and lightweight spacing, radius, and typography tokens
+- Reusable cards, rows, chips, avatars, buttons, empty states, and a loading view
+
+Skip cycles through mock cards. Save, Going, and Create activity display preview messages only. Nothing is saved or submitted. No gestures, persistence, networking, or backend integrations are implemented.
 
 ## Project structure
 
 ```text
 AfterWork.xcodeproj/
 AfterWork/
-├── App/
-│   ├── AfterWorkApp.swift
-│   └── MainTabView.swift
-├── Core/
-│   └── Design/
-│       ├── AppSpacing.swift
-│       ├── AppCornerRadius.swift
-│       └── AppTypography.swift
-├── Components/
-│   └── EmptyStateView.swift
+├── App/                 # Existing entry point and MainTabView
+├── Core/Design/         # AppColors, AppSpacing, AppCornerRadius, AppTypography
+├── Models/              # Activity and ActivityCategory, UI prototype only
+├── Components/          # Shared presentation components
 ├── Features/
-│   ├── Feed/FeedView.swift
-│   ├── Explore/ExploreView.swift
-│   ├── CreateActivity/CreateActivityView.swift
-│   ├── Notifications/NotificationsView.swift
-│   └── Profile/ProfileView.swift
+│   ├── Feed/
+│   ├── Explore/
+│   ├── CreateActivity/
+│   ├── Notifications/
+│   └── Profile/
 └── Resources/
-    └── Assets.xcassets/
+    ├── Assets.xcassets/ # Adaptive semantic colors and existing app assets
+    └── MockData/        # MockActivities
 ```
 
-Models is a reserved logical area for future domain types. No empty Models folder or placeholder models are needed in Stage 1. Views contain only presentation; feature view models will own state and behavior when those features are implemented.
+Shared components: ActivityCard, ActivityCover, ActivityRow, CategoryChip, CategoryFilter, AvatarView, AvatarGroup, PrimaryButton, SecondaryButton, EmptyStateView, and LoadingView.
 
-The existing Xcode project uses a synchronized folder group, so files under AfterWork are discovered automatically.
+The mock model stores a single `startsAt` date for both date and time. Shared schedule formatting respects the user's locale. Samples are generated relative to the day the app launches, with Board Games on the nearest Friday. Explore avoids duplicate date groups and places later-week samples under Coming up if necessary.
+
+Views contain presentation and small transient UI state. No view models are needed until feature behavior is introduced. The existing synchronized Xcode group discovers source files automatically.
+
+## Appearance and accessibility
+
+Semantic asset colors support Light and Dark Mode. Text uses system styles for Dynamic Type, compact rows reflow at accessibility sizes, and screens scroll. Interactive controls provide at least 44-point targets. Decorative artwork is hidden from VoiceOver; filters expose selection and action buttons have descriptive labels.
+
+Previews include ActivityCard (Light and Dark with large text), CategoryChip, AvatarView/AvatarGroup, PrimaryButton, Feed, and other feature screens. Inspect all tabs at large Dynamic Type sizes and with VoiceOver before extending the prototype.
 
 ## Build
 
@@ -85,4 +93,4 @@ Running on a physical device requires selecting your development team under Sign
 - Mentions
 - Photos
 
-These features are planned only and are not implemented in Stage 1.
+These integrations and real product behaviors remain planned. Stage 2 uses local mock data only.
