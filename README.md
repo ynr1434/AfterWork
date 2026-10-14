@@ -185,13 +185,13 @@ Apply `supabase/migrations/001_initial_schema.sql` once to a fresh Supabase proj
 | activities | Author, category, times, location, optional capacity and cover |
 | activity_participants | One status per activity/user: interested, going, declined |
 | comments | Activity comments with author ownership |
-| activity_photos | Photo metadata only, no Storage buckets or upload implementation |
+| activity_photos | Metadata for private activity photo objects in the `activity-photos` Storage bucket |
 | activity_mentions | Activity/comment mentions, with matching activity/comment foreign keys |
 | notifications | Private recipient records, created by trusted server code later |
 
 All rows use UUID keys and timestamptz creation dates. Profiles, activities, participants, and comments share an updated-at trigger. Constraints reject invalid capacities, time ranges, coordinates, empty titles/comments, duplicate participation, and duplicate mentions. Indexes support feed dates, categories, authors, participants, comments, notification timelines, and foreign-key cleanup.
 
-Deleting an Auth user cascades their profile and authored content; deleting an activity cascades its participants, comments, photos, and mentions. Notification activity/actor references become null when those rows are deleted. Category deletion is restricted while activities reference it. Photo-row deletion does not delete a Storage object; future Storage integration must handle that separately. Participant capacity is informational at this stage; atomic capacity enforcement belongs to the future join flow.
+Deleting an Auth user cascades their profile and authored content; deleting an activity cascades its participants, comments, photo metadata, and mentions. The app removes private photo objects before deleting an activity; if Storage cleanup fails, activity deletion stops so objects are not orphaned. Notification activity/actor references become null when those rows are deleted. Category deletion is restricted while activities reference it. Activity photos are limited to ten images, resized to at most 2,200 pixels on the long edge, and uploaded as JPEG files no larger than 5 MB. Private image URLs are signed for 15 minutes. Participant capacity is informational at this stage; atomic capacity enforcement belongs to the future join flow.
 
 ### Access policies
 
@@ -201,7 +201,7 @@ All eight tables have RLS enabled. Migration 001 grants no anonymous access; mig
 - Users can update their own profile presentation fields. Profile provisioning and email synchronization are reserved for trusted server code in the future Auth stage; there is no automatic Auth trigger yet.
 - Activities and comments can be created as oneself and edited/deleted only by their author.
 - Participant records belong to the current user; only status is editable.
-- Photo inserts require the current uploader and a storage path beginning with their UUID plus `/`; users can delete their own metadata. This does not replace future Storage object policies.
+- Photos are stored in the private `activity-photos` bucket using `activities/<activity UUID>/<uploader UUID>/<photo UUID>.jpg`. Only the organizer or a going participant can upload. The uploader or activity organizer can delete a photo. Metadata and Storage policies enforce ownership, activity membership, canonical paths, and a maximum of ten photos per activity.
 - Mentions are readable only by sender/recipient. Inserts require the current sender to own the source activity or source comment. A composite foreign key prevents cross-activity comment references. Mentions cannot be updated and can be deleted by their sender.
 - Notifications are visible only to their recipient. The only client-editable field is `is_read`. No client insert/delete permission or policy exists.
 - Categories are read-only from clients. Trusted server operations retain service-role privileges; that role is never configured in the app.
@@ -212,9 +212,11 @@ All eight tables have RLS enabled. Migration 001 grants no anonymous access; mig
 2. Open **SQL Editor > New query**.
 3. Run `supabase/migrations/001_initial_schema.sql` once. If Stage 3 was already applied, skip this step; do not recreate the tables.
 4. Run `supabase/migrations/002_public_category_read.sql` once. This is required for the connection test before Auth exists: it grants read-only access to the public category catalog and leaves RLS enabled. It grants no access to private data or writes.
-5. In **Table Editor**, verify the eight tables: profiles, categories, activities, activity_participants, comments, activity_photos, activity_mentions, notifications.
-6. Verify `categories` has 12 rows.
-7. Verify RLS is enabled on all eight tables. Optionally run this in SQL Editor:
+5. Run `supabase/migrations/20261014110000_stage9_activity_photos.sql` once to create the private Storage bucket and Stage 9 photo access policies. This migration is additive and is not applied by the app.
+6. In **Storage**, verify the private `activity-photos` bucket exists and its size/MIME restrictions are 5 MB and `image/jpeg`.
+7. In **Table Editor**, verify the eight tables: profiles, categories, activities, activity_participants, comments, activity_photos, activity_mentions, notifications.
+8. Verify `categories` has 12 rows.
+9. Verify RLS is enabled on all eight tables. Optionally run this in SQL Editor:
 
    ```sql
    select tablename, rowsecurity
@@ -225,10 +227,10 @@ All eight tables have RLS enabled. Migration 001 grants no anonymous access; mig
    select count(*) from public.categories;
    ```
 
-8. Get the **Project URL** from the project's **Connect** panel.
-9. Get the **publishable** key from **Settings > API Keys**, or the legacy public **anon** key. Never use a service-role or secret key.
-10. Create `Configuration/Config.xcconfig` with the settings below if the local file does not exist. A blank local copy was prepared during Stage 3.5. Do not overwrite a configured copy.
-11. Paste the values **only into Configuration/Config.xcconfig**:
+10. Get the **Project URL** from the project's **Connect** panel.
+11. Get the **publishable** key from **Settings > API Keys**, or the legacy public **anon** key. Never use a service-role or secret key.
+12. Create `Configuration/Config.xcconfig` with the settings below if the local file does not exist. A blank local copy was prepared during Stage 3.5. Do not overwrite a configured copy.
+13. Paste the values **only into Configuration/Config.xcconfig**:
 
     ```xcconfig
     SUPABASE_URL = https:/$()/PROJECT_REF.supabase.co

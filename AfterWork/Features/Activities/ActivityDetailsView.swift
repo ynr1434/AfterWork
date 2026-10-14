@@ -6,6 +6,7 @@ struct ActivityDetailsView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var model: ActivityDetailsViewModel
     @State private var engagement = ActivityEngagementViewModel()
+    @State private var photos = ActivityPhotosViewModel()
     @State private var schedule = ActivityScheduleViewModel()
     @State private var comments = CommentsViewModel()
     @State private var isEditing = false
@@ -51,6 +52,7 @@ struct ActivityDetailsView: View {
                     NavigationLink { ParticipantsView(activityId: activity.id) } label: {
                         HStack { AvatarGroup(initials: activity.participantInitials, totalCount: activity.participantCount); Text(activity.participationText) }
                     }.buttonStyle(.plain)
+                    ActivityPhotosSection(activity: activity, model: photos)
                     commentsSection(activityID: activity.id)
                     if let error = engagement.errorMessage { Text(error).foregroundStyle(.red) }
                     if activity.isGoing || activity.authorId == auth.userID {
@@ -89,7 +91,9 @@ struct ActivityDetailsView: View {
             await model.load()
             if let activity = model.activity {
                 await engagement.load(activityIDs: [activity.id])
-                await schedule.configure(activity: engagement.state(for: activity))
+                let currentActivity = engagement.state(for: activity)
+                await schedule.configure(activity: currentActivity)
+                await photos.load(activity: currentActivity, currentUserID: auth.userID)
                 await comments.load(activityID: activity.id)
             }
         }
@@ -97,7 +101,9 @@ struct ActivityDetailsView: View {
             await model.load()
             if let activity = model.activity {
                 await engagement.load(activityIDs: [activity.id])
-                await schedule.configure(activity: engagement.state(for: activity))
+                let currentActivity = engagement.state(for: activity)
+                await schedule.configure(activity: currentActivity)
+                await photos.load(activity: currentActivity, currentUserID: auth.userID)
                 await comments.load(activityID: activity.id)
             }
         }

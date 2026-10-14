@@ -178,9 +178,21 @@ final class ActivityRepositoryTests: XCTestCase {
 
     func testZeroRowDeleteIsNotReportedAsSuccess() async throws {
         ActivityURLProtocol.handler = { request in
-            XCTAssertEqual(request.httpMethod, "DELETE")
-            XCTAssertEqual(self.query(request)["author_id"], "eq.\(ActivityFixtures.authorID.uuidString)")
-            return (200, Data("[]".utf8))
+            let table = request.url!.pathComponents.last!
+            switch (request.httpMethod, table) {
+            case ("GET", "activities"):
+                XCTAssertEqual(self.query(request)["author_id"], "eq.\(ActivityFixtures.authorID.uuidString)")
+                let json = try JSONSerialization.data(withJSONObject: [["id": ActivityFixtures.activityID.uuidString]])
+                return (200, json)
+            case ("GET", "activity_photos"):
+                return (200, Data("[]".utf8))
+            case ("DELETE", "activities"):
+                XCTAssertEqual(self.query(request)["author_id"], "eq.\(ActivityFixtures.authorID.uuidString)")
+                return (200, Data("[]".utf8))
+            default:
+                XCTFail("Unexpected activity-delete request: \(request.httpMethod ?? "nil") \(table)")
+                return (500, Data())
+            }
         }
         do {
             try await repository().deleteActivity(id: ActivityFixtures.activityID)

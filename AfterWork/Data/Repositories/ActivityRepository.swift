@@ -133,6 +133,27 @@ struct ActivityRepository {
         try await perform {
             let authorID = try await currentUserID()
             struct Deleted: Decodable { let id: UUID }
+            // Confirm ownership before touching Storage so an unauthorized activity
+            // delete cannot remove photo objects as a side effect.
+            let owned: [Deleted] = try await client.from("activities").select("id")
+                .eq("id", value: id.uuidString).eq("author_id", value: authorID.uuidString)
+                .limit(1).execute().value
+            guard owned.contains(where: { $0.id == id }) else { throw ActivityError.notOwner }
+
+            let photos: [ActivityPhotoPath] = try await client.from("activity_photos")
+                .select("storage_path").eq("activity_id", value: id.uuidString).execute().value
+            if !photos.isEmpty {
+                do {
+                    try await client.storage.from(ActivityPhotoRepository.bucketName)
+                        .remove(paths: photos.map(\.storagePath))
+                } catch {
+                    #if DEBUG
+                    print("[AfterWork] activity photo cleanup failed, activity_id=\(id.uuidString), error_type=\(String(describing: type(of: error)))")
+                    #endif
+                    throw ActivityError.requestFailed
+                }
+            }
+
             let rows: [Deleted] = try await client.from("activities").delete()
                 .eq("id", value: id.uuidString).eq("author_id", value: authorID.uuidString)
                 .select("id").execute().value
@@ -168,6 +189,11 @@ struct ActivityRepository {
             throw ActivityError.requestFailed
         }
     }
+}
+
+private struct ActivityPhotoPath: Decodable {
+    let storagePath: String
+    enum CodingKeys: String, CodingKey { case storagePath = "storage_path" }
 }
 
 
