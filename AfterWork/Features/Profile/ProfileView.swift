@@ -41,6 +41,7 @@ struct ProfileView: View {
                     profileSection("Saved", symbol: "bookmark", activities: activities.saved)
                     profileSection("Created", symbol: "plus.circle", activities: activities.created)
                     if let error = activities.errorMessage { Text(error).foregroundStyle(.red) }
+                    PushSettingsView()
                     Button("Sign Out", role: .destructive) { Task { await auth.signOut() } }
                         .disabled(auth.isBusy)
                     if auth.isBusy { ProgressView() }
@@ -85,4 +86,4 @@ struct ProfileView: View {
     }
 }
 
-#Preview { ProfileView().environment(AuthManager()) }
+#Preview { ProfileView().environment(AuthManager()).environment(PushNotificationManager.shared) }

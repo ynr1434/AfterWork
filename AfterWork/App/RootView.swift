@@ -2,6 +2,7 @@ import SwiftUI
 
 struct RootView: View {
     @State private var auth = AuthManager()
+    @State private var push = PushNotificationManager.shared
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
@@ -33,10 +34,16 @@ struct RootView: View {
             }
         }
         .environment(auth)
+        .environment(push)
         .tint(AppColors.accent)
-        .task { await auth.start() }
+        .task {
+            auth.prepareForSignOut = { try await push.prepareForSignOut() }
+            auth.onSessionEnded = { push.sessionEnded() }
+            await auth.start()
+        }
+        .task(id: auth.userID) { await push.synchronize(userID: auth.userID) }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .active { Task { await auth.refreshIfNeeded() } }
+            if phase == .active { Task { await auth.refreshIfNeeded(); if !auth.isBusy { await push.synchronize(userID: auth.userID) } } }
         }
         // OAuth is returned directly to the in-flight ASWebAuthenticationSession.
         // No general onOpenURL token handler is installed, preventing unsolicited callbacks.

@@ -1,0 +1,6 @@
+project_id = "afterwork"
+
+# JWT gateway validation is replaced ONLY for this database webhook endpoint by
+# the mandatory server-side x-afterwork-webhook-secret check in handler.ts.
+[functions.send-push-notification]
+verify_jwt = false

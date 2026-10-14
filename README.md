@@ -1,3 +1,16 @@
+## Stage 10 — Remote Push Notifications
+
+Stage 10 is prepared locally on `feature/stage-10-remote-push`. See [STAGE10.md](STAGE10.md) for the complete architecture/security report, file inventory, validation, exact setup/deployment instructions and physical-device verification plan. **No migration, function, secrets or webhook has been deployed remotely.**
+
+- Existing Stage 8 `notifications` INSERTs remain the source of truth for `mention` and `activityComment`. One secured Database Webhook invokes the new Supabase Edge Function, which rereads the canonical recipient and sends generic alerts through the correct HTTP/2 APNs environment. No new in-app source, activity broadcasts or Firebase backend is added.
+- Profile offers an explicit **Enable Notifications** action, status, retry/opt-out and Open Settings when denied. Tokens are received by a lightweight AppDelegate adaptor, held in memory, and registered with the existing Supabase client. Permissions are never requested automatically on first launch.
+- Apply only the additive `supabase/migrations/20261014120000_stage10_push_notifications.sql` after review. Private `push_device_tokens` registrations use an authenticated session and Keychain-held installation proof; RLS and narrow RPCs protect account transfers, rotation, multiple devices and logout cleanup. `push_deliveries` provides bounded per-notification/installation claims and guarded invalid-token handling.
+- APNs environment comes from the running app's signed aps-environment, not DEBUG. Current signing remains unchanged; `Configuration/AfterWorkPush.entitlements` is an optional template for a properly provisioned paid team. The bundle ID is still `com.kingz.AfterWork.AfterWork`.
+- Provider keys and APNS_KEY_ID / APNS_TEAM_ID / APNS_PRIVATE_KEY / APNS_TOPIC belong only in **Edge Function Secrets**, together with a separate PUSH_WEBHOOK_SECRET. The endpoint-specific JWT gateway exception requires its mandatory private `x-afterwork-webhook-secret` header. No keys belong in Swift, Info.plist, xcconfig, SQL or Git.
+- Foreground alerts refresh the existing notification list/count without marking read. Taps wait for auth, revalidate recipient/activity/type, open existing Details, and require server read confirmation. The in-app badge now uses the exact backend unread count. Local reminders remain independent; no app-icon badge or unsupported background execution is added.
+- Explicit logout removes only the current installation before clearing auth. Cleanup failure blocks logout with retry. Registration writes are serialized and late APNs callbacks cannot re-register during cleanup.
+- Debug/Release builds, XCTest, Deno and isolated SQL validation are documented in [STAGE10.md](STAGE10.md#completed-locally-and-validation). **Real APNs delivery remains unverified**: paid signing, physical devices, server credentials, hosted deployment and webhook setup are manual prerequisites. Docker's local daemon is stopped, so the full local Edge runtime could not be started; Deno validation ran independently.
+
 ## Stage 6 — Engagement
 
 Stage 6 adds server-backed activity engagement on `feature/stage-6-engagement`.

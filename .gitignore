@@ -13,3 +13,7 @@ supabase/.branches/
 
 # Local Xcode window state.
 *.xcuserstate
+
+# APNs provider credentials belong only in server-side secrets.
+*.p8
+supabase/.env*

@@ -9,6 +9,7 @@ import SwiftUI
 
 @main
 struct AfterWorkApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     var body: some Scene {
         WindowGroup {
             RootView()

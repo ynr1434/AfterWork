@@ -14,6 +14,9 @@ final class AuthManager {
     var message: String?
     private(set) var blockingError: String?
 
+    @ObservationIgnored var prepareForSignOut: (() async throws -> Void)?
+    @ObservationIgnored var onSessionEnded: (() -> Void)?
+
     var userID: UUID? { session?.user.id }
     var email: String? { session?.user.email }
     var metadataName: String { user?.userMetadata["full_name"]?.stringValue ?? "" }
@@ -209,6 +212,8 @@ final class AuthManager {
         isBusy = true
         message = nil
         defer { isBusy = false }
+        do { try await prepareForSignOut?() }
+        catch { message = "We couldn't remove this device's push registration. Check your connection and retry signing out."; return }
         do {
             try await SupabaseManager.shared.client.auth.signOut(scope: .local)
             clearSession()
@@ -224,6 +229,7 @@ final class AuthManager {
     }
 
     private func clearSession() {
+        if session != nil { onSessionEnded?() }
         revision = UUID()
         profileTask?.cancel()
         session = nil

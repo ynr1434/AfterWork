@@ -48,12 +48,30 @@ struct NotificationRepository {
         } catch { throw DatabaseError.requestFailed }
     }
 
+    func fetchNotification(id: UUID) async throws -> AppNotification? {
+        let userID = try await currentUserID()
+        let rows: [NotificationDTO] = try await client.from("notifications").select()
+            .eq("id", value:id.uuidString).eq("user_id",value:userID.uuidString).limit(1).execute().value
+        return rows.first.map(AppNotification.init(dto:))
+    }
+
+    func fetchUnreadCount() async throws -> Int {
+        let userID = try await currentUserID()
+        let response = try await client.from("notifications").select("id", head:true, count:.exact)
+            .eq("user_id",value:userID.uuidString).eq("is_read",value:false).execute()
+        guard let count=response.count else { throw DatabaseError.requestFailed }
+        return count
+    }
+
     func markAsRead(notificationID: UUID) async throws {
         let userID = try await currentUserID()
         struct Update: Encodable { let is_read: Bool }
         do {
-            _ = try await client.from("notifications").update(Update(is_read: true))
-                .eq("id", value: notificationID.uuidString).eq("user_id", value: userID.uuidString).execute()
+            struct Confirmed: Decodable { let id: UUID; let is_read: Bool }
+            let rows: [Confirmed] = try await client.from("notifications").update(Update(is_read: true))
+                .eq("id", value: notificationID.uuidString).eq("user_id", value: userID.uuidString)
+                .select("id,is_read").execute().value
+            guard rows.contains(where:{$0.id == notificationID && $0.is_read}) else { throw DatabaseError.requestFailed }
         } catch { throw DatabaseError.requestFailed }
     }
 
