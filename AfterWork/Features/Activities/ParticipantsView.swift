@@ -9,7 +9,10 @@ struct ParticipantsView: View {
     var body: some View {
         Group {
             if isLoading { ProgressView("Loading participants…") }
-            else if participants.isEmpty { ContentUnavailableView("No attendees yet", systemImage: "person.2") }
+            else if let error = engagement.errorMessage {
+                VStack { InlineMessage(message: error) { Task { await load() } } }.padding()
+            }
+            else if participants.isEmpty { EmptyStateView(icon: "person.2", title: "Good company starts with you", subtitle: "People who join this activity will appear here.") }
             else {
                 List(participants) { participant in
                     HStack(spacing: AppSpacing.md) {
@@ -26,10 +29,14 @@ struct ParticipantsView: View {
             }
         }
         .navigationTitle("Participants")
-        .task {
-            participants = await engagement.participants(activityId: activityId)
-            isLoading = false
-        }
-        .refreshable { participants = await engagement.participants(activityId: activityId) }
+        .background(AppColors.appBackground)
+        .task { await load() }
+        .refreshable { await load() }
+    }
+
+    private func load() async {
+        isLoading = true
+        participants = await engagement.participants(activityId: activityId)
+        isLoading = false
     }
 }

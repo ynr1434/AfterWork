@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ProfileView: View {
     @Environment(AuthManager.self) private var auth
+    @State private var confirmSignOut = false
     @State private var isEditing = false
     @State private var activities = ProfileActivitiesViewModel()
     var body: some View {
@@ -11,7 +12,7 @@ struct ProfileView: View {
                     VStack(spacing: AppSpacing.sm) {
                         AvatarView(initials: auth.profile?.initials ?? "", size: 88)
                             .accessibilityHidden(true)
-                        Text(auth.profile?.displayName ?? "").font(AppTypography.title)
+                        Text(auth.profile?.displayName ?? "Your profile").font(AppTypography.title).multilineTextAlignment(.center)
                         if let title = auth.profile?.jobTitle { Text(title).font(AppTypography.headline) }
                         if let department = auth.profile?.department { Text(department)
                             .font(AppTypography.body)
@@ -22,7 +23,7 @@ struct ProfileView: View {
                         }
                     }
                     .frame(maxWidth: .infinity)
-                    .padding(AppSpacing.lg)
+                    .padding(AppSpacing.lg).surfaceCard(radius: AppCornerRadius.large)
 
                     VStack(alignment: .leading, spacing: AppSpacing.sm) {
                         Text("Interests").font(AppTypography.headline)
@@ -33,19 +34,21 @@ struct ProfileView: View {
                         ForEach(selected) { category in
                             Label(category.displayName, systemImage: category.symbol)
                         }
-                    }.frame(maxWidth: .infinity, alignment: .leading)
-                    Button("Edit Profile") { auth.message = nil; isEditing = true }
-                        .buttonStyle(.borderedProminent).disabled(auth.isBusy)
+                    }.frame(maxWidth: .infinity, alignment: .leading).padding(AppSpacing.md).surfaceCard()
+                    SecondaryButton(title: "Edit Profile", symbol: "pencil") { auth.message = nil; isEditing = true }
+                        .disabled(auth.isBusy)
 
+                    if activities.isLoading && !activities.hasLoaded { ProgressView("Loading your activities…") }
                     profileSection("Upcoming", symbol: "calendar", activities: activities.joined)
                     profileSection("Saved", symbol: "bookmark", activities: activities.saved)
                     profileSection("Created", symbol: "plus.circle", activities: activities.created)
-                    if let error = activities.errorMessage { Text(error).foregroundStyle(.red) }
-                    PushSettingsView()
-                    Button("Sign Out", role: .destructive) { Task { await auth.signOut() } }
+                    if let error = activities.errorMessage { InlineMessage(message: error) { Task { await activities.load() } }.disabled(activities.isLoading) }
+                    PushSettingsView().padding(AppSpacing.md).surfaceCard()
+                    Button("Sign Out", role: .destructive) { confirmSignOut = true }
+                        .frame(minHeight: 44).buttonStyle(.bordered)
                         .disabled(auth.isBusy)
                     if auth.isBusy { ProgressView() }
-                    if let message = auth.message { Text(message).foregroundStyle(.red) }
+                    if let message = auth.message { InlineMessage(message: message) }
                 }
                 .padding(AppSpacing.lg)
                 .frame(maxWidth: 600)
@@ -54,6 +57,11 @@ struct ProfileView: View {
             .background(AppColors.appBackground)
             .navigationTitle("Profile")
             .task { await activities.load() }
+            .refreshable { await activities.load() }
+            .confirmationDialog("Sign out of AfterWork?", isPresented: $confirmSignOut, titleVisibility: .visible) {
+                Button("Sign Out", role: .destructive) { Task { await auth.signOut() } }
+                Button("Cancel", role: .cancel) { }
+            }
             .sheet(isPresented: $isEditing) { OnboardingView(isEditing: true).environment(auth) }
             #if DEBUG
             .toolbar {
@@ -74,7 +82,10 @@ struct ProfileView: View {
         VStack(alignment: .leading, spacing: AppSpacing.sm) {
             Label(title, systemImage: symbol).font(AppTypography.headline)
             if activities.isEmpty {
-                Text("No activities yet").font(AppTypography.caption).foregroundStyle(AppColors.secondaryText)
+                if self.activities.hasLoaded && self.activities.errorMessage == nil {
+                    Text(title == "Upcoming" ? "Join a plan to see it here." : title == "Saved" ? "Save activities you'd like to come back to." : "Plans you organize will appear here.")
+                        .font(.subheadline).foregroundStyle(AppColors.secondaryText)
+                }
             } else {
                 ForEach(activities) { activity in
                     NavigationLink { ActivityDetailsView(id: activity.id) } label: { ActivityRow(activity: activity) }
@@ -83,6 +94,7 @@ struct ProfileView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(AppSpacing.md).surfaceCard()
     }
 }
 

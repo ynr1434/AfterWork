@@ -21,7 +21,7 @@ struct ActivityRow: View {
         }
         .padding(AppSpacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(AppColors.surface, in: RoundedRectangle(cornerRadius: AppCornerRadius.medium))
+        .surfaceCard()
         .accessibilityElement(children: .combine)
     }
 
@@ -36,11 +36,12 @@ struct ActivityRow: View {
             Text(activity.categoryDisplayName)
                 .font(AppTypography.caption)
                 .foregroundStyle(AppColors.secondaryText)
-            Text(activity.title).font(AppTypography.headline)
+            Text(activity.title).font(AppTypography.headline).fixedSize(horizontal: false, vertical: true)
             Text(activity.scheduleText).font(AppTypography.caption)
-            Text(activity.locationName).font(AppTypography.caption)
+            Label(activity.locationName, systemImage: "mappin.and.ellipse").font(AppTypography.caption).foregroundStyle(AppColors.secondaryText)
             Text(activity.participationText).font(AppTypography.caption.weight(.semibold))
         }
         .foregroundStyle(AppColors.primaryText)
+        .fixedSize(horizontal: false, vertical: true)
     }
 }

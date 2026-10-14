@@ -3,6 +3,7 @@ import SwiftUI
 
 struct AuthView: View {
     @Environment(AuthManager.self) private var auth
+    @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
@@ -10,10 +11,12 @@ struct AuthView: View {
             ScrollView {
                 VStack(spacing: AppSpacing.xl) {
                     Image(systemName: "sparkles")
-                        .font(.system(size: 64)).foregroundStyle(AppColors.accent)
+                        .font(.system(size: 52, weight: .medium)).foregroundStyle(AppColors.accent)
+                        .frame(width: 112, height: 112)
+                        .background(AppColors.accent.opacity(0.1), in: RoundedRectangle(cornerRadius: 32))
                         .accessibilityHidden(true)
                     VStack(spacing: AppSpacing.md) {
-                        Text("AfterWork").font(.largeTitle.bold())
+                        Text("AfterWork").font(.largeTitle.bold()).accessibilityAddTraits(.isHeader)
                         Text("Work ends. Life doesn't.")
                             .font(.title3).foregroundStyle(AppColors.secondaryText)
                         Text("Find your people. Make plans. Enjoy what comes next.")
@@ -27,23 +30,24 @@ struct AuthView: View {
                         }
                         .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
                         .id(colorScheme)
-                        .frame(height: 50)
+                        .frame(height: typeSize.isAccessibilitySize ? 64 : 54)
                         .accessibilityLabel("Continue with Apple")
                         Button { Task { await auth.signInWithGoogle() } } label: {
                             HStack(spacing: 12) {
                                 Image("GoogleG").resizable().scaledToFit().frame(width: 20, height: 20)
                                     .accessibilityHidden(true)
-                                Text("Continue with Google").font(.system(size: 17, weight: .medium))
+                                Text("Continue with Google").font(.body.weight(.medium)).fixedSize(horizontal: false, vertical: true)
                             }
-                            .frame(maxWidth: .infinity).frame(height: 50)
+                            .padding(.horizontal, AppSpacing.md).padding(.vertical, AppSpacing.sm)
+                            .frame(maxWidth: .infinity, minHeight: typeSize.isAccessibilitySize ? 64 : 54)
                             .foregroundStyle(Color.primary)
                             .background(AppColors.surface, in: RoundedRectangle(cornerRadius: 6))
                             .overlay(RoundedRectangle(cornerRadius: 6).stroke(AppColors.separator))
                         }.accessibilityLabel("Continue with Google")
                     }.disabled(auth.isBusy)
-                    if auth.isBusy { ProgressView("Signing in…") }
+                    ProgressView("Signing in…").opacity(auth.isBusy ? 1 : 0).accessibilityHidden(!auth.isBusy)
                     if let message = auth.message {
-                        Text(message).foregroundStyle(.red).multilineTextAlignment(.center)
+                        InlineMessage(message: message)
                             .accessibilityAddTraits(.updatesFrequently)
                     }
                     #if DEBUG
@@ -52,7 +56,7 @@ struct AuthView: View {
                     #endif
                 }
                 .padding(AppSpacing.xl)
-                .padding(.top, 64)
+                .padding(.top, AppSpacing.lg)
                 .frame(maxWidth: 480)
                 .frame(maxWidth: .infinity)
             }.background(AppColors.appBackground)

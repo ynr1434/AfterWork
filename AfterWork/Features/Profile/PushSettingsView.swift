@@ -7,7 +7,7 @@ struct PushSettingsView: View {
     VStack(alignment: .leading, spacing: AppSpacing.sm) {
       Text("Notifications").font(AppTypography.headline)
       Text(
-        "Push Notifications: \(push.permission == .denied ? "Disabled" : push.registered ? "Enabled" : push.enabled ? "Registration pending" : "Off")"
+        "Push Notifications: \(push.permission == .denied ? "Disabled" : push.registered ? "Enabled" : push.enabled ? "Finishing setup" : "Off")"
       )
       Text(push.permission.title).font(AppTypography.caption).foregroundStyle(.secondary)
       Text("Get alerts for mentions and comments on your activities.").font(AppTypography.caption)
@@ -20,7 +20,7 @@ struct PushSettingsView: View {
           }
         }
       } else {
-        Button(push.enabled ? "Retry Registration" : "Enable Notifications") {
+        Button(push.registered ? "Refresh Status" : push.enabled ? "Try Again" : "Enable Notifications") {
           Task { await push.enable() }
         }
         .disabled(push.isWorking)
@@ -29,11 +29,12 @@ struct PushSettingsView: View {
         Button("Turn Off Push", role: .destructive) { Task { await push.disable() } }.disabled(
           push.isWorking)
       }
-      if push.isWorking { ProgressView() }
+      if push.isWorking { ProgressView("Updating notifications…") }
       if let message = push.message {
         Text(message).font(AppTypography.caption).foregroundStyle(.secondary)
       }
-    }.frame(maxWidth: .infinity, alignment: .leading)
+    }.buttonStyle(.bordered).controlSize(.large)
+      .frame(maxWidth: .infinity, alignment: .leading)
       .task { await push.updatePermission() }
   }
 }

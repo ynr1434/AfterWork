@@ -3,12 +3,12 @@ import Foundation
 import ImageIO
 import UniformTypeIdentifiers
 
-struct ActivityPhotoPixelSize: Equatable {
+nonisolated struct ActivityPhotoPixelSize: Equatable {
     let width: Int
     let height: Int
 }
 
-enum ActivityPhotoProcessor {
+nonisolated enum ActivityPhotoProcessor {
     static let jpegQuality = 0.82
 
     static func resizedSize(width: Int, height: Int, maxLongEdge: Int = ActivityPhotoRules.maximumLongEdge) -> ActivityPhotoPixelSize? {

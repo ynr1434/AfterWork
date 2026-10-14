@@ -18,7 +18,7 @@ struct ActivityPhoto: Identifiable, Equatable, Sendable {
     }
 }
 
-enum ActivityPhotoRules {
+nonisolated enum ActivityPhotoRules {
     static let maximumPhotoCount = 10
     static let maximumUploadBytes = 5 * 1024 * 1024
     static let maximumLongEdge = 2_200
@@ -43,7 +43,7 @@ enum ActivityPhotoRules {
     }
 }
 
-enum ActivityPhotoError: Error, LocalizedError, Equatable {
+nonisolated enum ActivityPhotoError: Error, LocalizedError, Equatable {
     case invalidImage
     case tooLarge
     case limitReached

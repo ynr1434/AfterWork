@@ -3,6 +3,8 @@ import Observation
 
 @MainActor @Observable
 final class ProfileActivitiesViewModel {
+    private(set) var isLoading = false
+    private(set) var hasLoaded = false
     private(set) var saved: [Activity] = []
     private(set) var joined: [Activity] = []
     private(set) var created: [Activity] = []
@@ -21,7 +23,10 @@ final class ProfileActivitiesViewModel {
     }
 
     func load() async {
-        guard let engagement, let activities else { return }
+        guard !isLoading else { return }
+        guard let engagement, let activities else { errorMessage = ActivityError.requestFailed.localizedDescription; return }
+        isLoading = true
+        defer { isLoading = false }
         do {
             async let savedIDs = engagement.fetchSavedActivityIDs()
             async let joinedIDs = engagement.fetchJoinedActivityIDs()
@@ -29,10 +34,12 @@ final class ProfileActivitiesViewModel {
             let (savedIDsResult, joinedIDsResult, createdResult) = try await (savedIDs, joinedIDs, createdRows)
             async let savedRows = activities.fetchActivities(ids: savedIDsResult)
             async let joinedRows = activities.fetchActivities(ids: joinedIDsResult)
-            saved = try await savedRows
-            let joinedResult = try await joinedRows
+            let (savedResult, joinedResult) = try await (savedRows, joinedRows)
+            guard !Task.isCancelled else { return }
+            saved = savedResult
             joined = joinedResult.filter { $0.startsAt >= .now }
             created = createdResult
+            hasLoaded = true
             errorMessage = nil
         } catch {
             errorMessage = activityErrorMessage(error)

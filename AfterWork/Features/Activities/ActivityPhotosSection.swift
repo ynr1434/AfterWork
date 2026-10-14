@@ -4,14 +4,15 @@ import SwiftUI
 struct ActivityPhotosSection: View {
     let activity: Activity
     @Bindable var model: ActivityPhotosViewModel
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var selectedItem: PhotosPickerItem?
     @State private var selectedIndex: Int?
     @State private var pendingDelete: ActivityPhoto?
 
     var body: some View {
         VStack(alignment: .leading, spacing: AppSpacing.sm) {
-            HStack {
-                Text("Photos").font(AppTypography.headline)
+            (typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: AppSpacing.sm)) : AnyLayout(HStackLayout())) {
+                Text("Photos").font(.title3.bold()).accessibilityAddTraits(.isHeader)
                 Text("· \(model.photos.count)/\(ActivityPhotoRules.maximumPhotoCount)").foregroundStyle(.secondary)
                 Spacer()
                 if model.canUpload && model.photos.count < ActivityPhotoRules.maximumPhotoCount {
@@ -22,29 +23,43 @@ struct ActivityPhotosSection: View {
                     .disabled(model.isUploading)
                 }
             }
-            if model.isUploading { ProgressView("Preparing photo…") }
+            if model.isUploading { ProgressView("Preparing and uploading photo…") }
             if model.isLoading && model.photos.isEmpty { ProgressView() }
-            else if model.photos.isEmpty { Text("No photos yet.").foregroundStyle(.secondary) }
+            else if model.photos.isEmpty && model.errorMessage == nil {
+                Text(model.canUpload ? "Share a moment from this activity. Add the first photo." : "Photos shared by attendees will appear here.").font(.subheadline).foregroundStyle(.secondary)
+            }
             else {
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: AppSpacing.sm) {
+                    LazyHStack(spacing: AppSpacing.sm) {
                         ForEach(Array(model.photos.enumerated()), id: \.element.id) { index, photo in
+                            VStack(spacing: AppSpacing.xs) {
                             Button { selectedIndex = index } label: {
                                 photoThumbnail(photo)
                             }
                             .buttonStyle(.plain)
-                            .contextMenu {
+                            .accessibilityLabel("Photo \(index + 1) of \(model.photos.count)")
+                            .accessibilityHint("Open full screen")
+                            Menu {
                                 if model.canDelete(photo) {
                                     Button("Delete Photo", systemImage: "trash", role: .destructive) {
                                         pendingDelete = photo
                                     }
                                 }
+                            } label: {
+                                if model.canDelete(photo) {
+                                    Image(systemName: "ellipsis").frame(width: 44, height: 44)
+                                }
+                            }.accessibilityLabel("Photo actions").disabled(model.deletingPhotoID != nil)
+                            if model.deletingPhotoID == photo.id { ProgressView("Deleting…").font(.caption) }
                             }
                         }
                     }
                 }
             }
-            if let error = model.errorMessage { Text(error).font(.footnote).foregroundStyle(.red) }
+            if let error = model.errorMessage {
+                InlineMessage(message: error) { Task { await model.load(activity: activity, currentUserID: model.currentUserID) } }
+                    .disabled(model.isLoading || model.isUploading || model.deletingPhotoID != nil)
+            }
         }
         .padding(.top, AppSpacing.sm)
         .onChange(of: selectedItem) { _, item in
@@ -89,7 +104,7 @@ struct ActivityPhotosSection: View {
     }
 
     private var imagePlaceholder: some View {
-        Image(systemName: "photo").font(.title2).foregroundStyle(.secondary)
+        Label("Unavailable", systemImage: "photo").font(.caption).foregroundStyle(.secondary)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
@@ -110,7 +125,8 @@ private struct ActivityPhotoGalleryView: View {
             TabView(selection: $index) {
                 ForEach(Array(photos.enumerated()), id: \.element.id) { offset, photo in
                     Group {
-                        if let url = photo.displayURL {
+                        if abs(offset - index) > 1 { Color.clear }
+                        else if let url = photo.displayURL {
                             AsyncImage(url: url) { phase in
                                 if let image = phase.image { image.resizable().scaledToFit() }
                                 else if phase.error != nil { ContentUnavailableView("Photo unavailable", systemImage: "photo") }
@@ -125,11 +141,21 @@ private struct ActivityPhotoGalleryView: View {
             HStack {
                 Button("Close", systemImage: "xmark") { dismiss() }
                     .labelStyle(.iconOnly).font(.headline).foregroundStyle(.white)
+                    .frame(width: 44, height: 44).background(.ultraThinMaterial, in: Circle())
+                    .accessibilityLabel("Close photos")
                 Spacer()
                 Text("\(index + 1) of \(photos.count)").font(.subheadline).foregroundStyle(.white)
             }
             .padding()
         }
+        .safeAreaInset(edge: .bottom) {
+            HStack {
+                Button("Previous", systemImage: "chevron.left") { index -= 1 }.disabled(index == 0)
+                Spacer()
+                Button("Next", systemImage: "chevron.right") { index += 1 }.disabled(index >= photos.count - 1)
+            }.buttonStyle(.bordered).padding().foregroundStyle(.white)
+        }
+        .preferredColorScheme(.dark)
         .statusBarHidden()
     }
 }

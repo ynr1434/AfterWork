@@ -7,6 +7,8 @@ final class ActivityEngagementViewModel {
     private(set) var isBusy = false
     private(set) var errorMessage: String?
     private(set) var needsAuthentication = false
+    @ObservationIgnored private var stateRevision = 0
+    @ObservationIgnored private var isLoading = false
     @ObservationIgnored private let repository: ActivityEngagementRepository?
 
     init(repository: ActivityEngagementRepository? = nil) {
@@ -14,12 +16,18 @@ final class ActivityEngagementViewModel {
     }
 
     func load(activityIDs: [UUID]) async {
-        guard !activityIDs.isEmpty else { return }
-        guard let repository else { return }
+        guard !activityIDs.isEmpty, !isBusy, !isLoading else { return }
+        guard let repository else { errorMessage = ActivityError.requestFailed.localizedDescription; return }
+        let revision = stateRevision
+        isLoading = true
+        defer { isLoading = false }
         do {
-            states.merge(try await repository.fetchEngagements(activityIds: activityIDs)) { _, new in new }
+            let result = try await repository.fetchEngagements(activityIds: activityIDs)
+            guard !Task.isCancelled, revision == stateRevision else { return }
+            states.merge(result) { _, new in new }
             errorMessage = nil
         } catch {
+            guard !Task.isCancelled, revision == stateRevision else { return }
             errorMessage = activityErrorMessage(error)
             needsAuthentication = isActivitySessionError(error)
         }
@@ -37,27 +45,28 @@ final class ActivityEngagementViewModel {
     }
 
     func save(activityId: UUID, isSaved: Bool) async {
-        guard let repository else { return }
+        guard let repository else { errorMessage = ActivityError.requestFailed.localizedDescription; return }
         await mutate(activityId: activityId) { try await repository.setSaved(activityId: activityId, isSaved: isSaved) }
     }
 
     func skip(activityId: UUID, isSkipped: Bool = true) async {
-        guard let repository else { return }
+        guard let repository else { errorMessage = ActivityError.requestFailed.localizedDescription; return }
         await mutate(activityId: activityId) { try await repository.setSkipped(activityId: activityId, isSkipped: isSkipped) }
     }
 
     func join(activityId: UUID) async {
-        guard let repository else { return }
+        guard let repository else { errorMessage = ActivityError.requestFailed.localizedDescription; return }
         await mutate(activityId: activityId) { try await repository.joinActivity(activityId: activityId) }
     }
 
     func leave(activityId: UUID, organizerID: UUID? = nil) async {
-        guard let repository else { return }
+        guard let repository else { errorMessage = ActivityError.requestFailed.localizedDescription; return }
         await mutate(activityId: activityId) { try await repository.leaveActivity(activityId: activityId, organizerID: organizerID) }
     }
 
     func participants(activityId: UUID) async -> [ParticipantDTO] {
         guard let repository else { return [] }
+        errorMessage = nil
         do { return try await repository.fetchParticipants(activityId: activityId) }
         catch {
             errorMessage = activityErrorMessage(error)
@@ -68,6 +77,7 @@ final class ActivityEngagementViewModel {
 
     private func mutate(activityId: UUID, operation: () async throws -> ActivityEngagementState) async {
         guard !isBusy else { return }
+        stateRevision += 1
         isBusy = true
         errorMessage = nil
         defer { isBusy = false }

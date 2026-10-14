@@ -38,7 +38,15 @@ struct CreateActivityView: View {
                     if model.categories.isEmpty, !model.isLoadingCategories {
                         Button("Retry Categories") { Task { await model.loadCategories() } }
                     }
+                    Text("Description · optional").font(.subheadline).foregroundStyle(.secondary)
                     TextEditor(text: $model.draft.description).frame(minHeight: 100)
+                        .overlay(alignment: .topLeading) {
+                            if model.draft.description.isEmpty {
+                                Text("What should people know about your plan?")
+                                    .foregroundStyle(.tertiary).padding(.top, 8).padding(.leading, 5)
+                                    .allowsHitTesting(false).accessibilityHidden(true)
+                            }
+                        }
                         .focused($focused, equals: .description).accessibilityLabel("Description, optional")
                 }
                 Section("When") {
@@ -69,8 +77,8 @@ struct CreateActivityView: View {
                 }
                 Section {
                     if let validation = model.validationMessage { Text(validation).foregroundStyle(.secondary) }
-                    if let error = model.errorMessage { Text(error).foregroundStyle(.red) }
-                    Button(model.isEditing ? "Save Changes" : "Publish Activity") {
+                    if let error = model.errorMessage { InlineMessage(message: error) }
+                    PrimaryButton(title: model.isEditing ? "Save Changes" : "Publish Activity", symbol: model.isEditing ? "checkmark" : "plus", isLoading: model.isSaving) {
                         focused = nil
                         Task {
                             guard let saved = await model.save(userID: auth.userID), auth.userID == saved.authorId else { return }
@@ -78,14 +86,20 @@ struct CreateActivityView: View {
                             if model.isEditing { onSaved?(saved); dismiss() }
                             else { created = saved; showsSuccess = true }
                         }
-                    }.disabled(model.validationMessage != nil || model.isSaving || model.isLoadingCategories)
-                    if model.isSaving { ProgressView(model.isEditing ? "Saving…" : "Publishing…") }
+                    }.disabled(!model.canSubmit)
+
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(AppColors.appBackground)
             .disabled(model.isSaving)
             .scrollDismissesKeyboard(.interactively)
             .navigationTitle(model.isEditing ? "Edit Activity" : "Create Activity")
             .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") { focused = nil }
+                }
                 if isPresentedAsSheet || model.isEditing {
                     ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.disabled(model.isSaving) }
                 }

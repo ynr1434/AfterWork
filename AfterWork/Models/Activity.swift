@@ -27,16 +27,7 @@ struct Activity: Identifiable {
     var categoryDisplayName: String { categoryName ?? category.displayName }
 
     var scheduleText: String {
-        let calendar = Calendar.current
-        let day: String
-        if calendar.isDateInToday(startsAt) {
-            day = "Today"
-        } else if calendar.isDateInTomorrow(startsAt) {
-            day = "Tomorrow"
-        } else {
-            day = startsAt.formatted(.dateTime.weekday(.wide).month(.abbreviated).day())
-        }
-        return "\(day) · \(startsAt.formatted(date: .omitted, time: .shortened))"
+        ActivityDateText.schedule(startsAt)
     }
 
     var participationText: String {

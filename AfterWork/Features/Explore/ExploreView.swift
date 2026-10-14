@@ -14,7 +14,7 @@ struct ExploreView: View {
                         .padding(.horizontal, AppSpacing.lg)
                     CategoryFilter(selection: $model.selectedCategoryId, categories: model.categories)
                     TimelineView(.periodic(from: .now, by: 60)) { context in
-                        VStack(alignment: .leading, spacing: AppSpacing.lg) {
+                        LazyVStack(alignment: .leading, spacing: AppSpacing.lg) {
                             ForEach(ActivityDayGroup.allCases) { group in
                                 let activities = model.visibleActivities.filter {
                                     ActivityDayGroup.group(for: $0.startsAt, now: context.date, calendar: calendar) == group

@@ -28,6 +28,8 @@ final class ActivityFormViewModel {
         self.saveActivity = saveActivity
     }
 
+    var canSubmit: Bool { !isSaving && !isLoadingCategories && validationMessage == nil }
+
     var isEditing: Bool { editingActivity != nil }
     var validationMessage: String? {
         if let message = draft.validationMessage { return message }

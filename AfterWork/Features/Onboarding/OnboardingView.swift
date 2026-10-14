@@ -56,14 +56,14 @@ struct OnboardingView: View {
                 }
                 Section {
                     if let validation = draft.validationMessage { Text(validation).foregroundStyle(.secondary) }
-                    if let message = auth.message { Text(message).foregroundStyle(.red) }
-                    Button(isEditing ? "Save Changes" : "Let's Go") {
+                    if let message = auth.message { InlineMessage(message: message) }
+                    PrimaryButton(title: isEditing ? "Save Changes" : "Let's Go", symbol: "checkmark", isLoading: auth.isBusy) {
                         focusedField = nil
                         Task {
                             if await auth.saveProfile(draft), isEditing { dismiss() }
                         }
                     }.disabled(draft.validationMessage != nil || auth.isBusy)
-                    if auth.isBusy { ProgressView("Saving…") }
+
                 }
                 if !isEditing {
                     Section {
@@ -71,10 +71,16 @@ struct OnboardingView: View {
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(AppColors.appBackground)
             .disabled(auth.isBusy)
             .scrollDismissesKeyboard(.interactively)
             .navigationTitle(isEditing ? "Edit Profile" : "Your Profile")
             .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") { focusedField = nil }
+                }
                 if isEditing {
                     ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.disabled(auth.isBusy) }
                 }

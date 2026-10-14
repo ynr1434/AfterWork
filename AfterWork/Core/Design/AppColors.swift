@@ -7,6 +7,9 @@ enum AppColors {
     static let secondarySurface = Color("SecondarySurface")
     static let primaryText = Color.primary
     static let secondaryText = Color.secondary
-    static let accent = Color.blue
+    static let accent = Color("AccentColor")
+    static let buttonFill = Color(red: 0.08, green: 0.31, blue: 0.75)
+    static let error = Color("ErrorColor")
+    static let success = Color.green
     static let separator = Color.primary.opacity(0.12)
 }

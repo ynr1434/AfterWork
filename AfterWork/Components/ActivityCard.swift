@@ -2,16 +2,18 @@ import SwiftUI
 
 struct ActivityCard: View {
     let activity: Activity
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             ActivityCover(activity: activity)
-                .frame(height: 210)
+                .frame(height: 190)
 
             VStack(alignment: .leading, spacing: AppSpacing.md) {
                 CategoryChip(category: activity.category, title: activity.categoryDisplayName)
                 Text(activity.title)
                     .font(AppTypography.title)
+                    .fixedSize(horizontal: false, vertical: true)
                     .accessibilityAddTraits(.isHeader)
 
                 VStack(alignment: .leading, spacing: AppSpacing.sm) {
@@ -20,10 +22,15 @@ struct ActivityCard: View {
                 }
                 .font(.subheadline)
                 .foregroundStyle(AppColors.secondaryText)
+                .fixedSize(horizontal: false, vertical: true)
 
-                Text(activity.description)
-                    .font(AppTypography.body)
-                    .foregroundStyle(AppColors.secondaryText)
+                if !activity.description.isEmpty {
+                    Text(activity.description)
+                        .font(AppTypography.body)
+                        .foregroundStyle(AppColors.secondaryText)
+                        .lineLimit(typeSize.isAccessibilitySize ? nil : 3)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
 
                 Rectangle().fill(AppColors.separator).frame(height: 1)
 
@@ -42,8 +49,8 @@ struct ActivityCard: View {
             .padding(AppSpacing.lg)
         }
         .foregroundStyle(AppColors.primaryText)
-        .background(AppColors.surface, in: RoundedRectangle(cornerRadius: AppCornerRadius.large))
         .clipShape(RoundedRectangle(cornerRadius: AppCornerRadius.large))
+        .surfaceCard(radius: AppCornerRadius.large)
     }
 
     private var avatars: some View {

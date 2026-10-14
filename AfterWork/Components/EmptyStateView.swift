@@ -1,50 +1,41 @@
 import SwiftUI
 
+/// Inline content can live inside an existing ScrollView without nesting scroll views.
+struct EmptyStateContent: View {
+    let icon: String
+    let title: String
+    var subtitle: String?
+
+    var body: some View {
+        VStack(spacing: AppSpacing.md) {
+            Image(systemName: icon)
+                .font(.title.weight(.medium))
+                .foregroundStyle(AppColors.accent)
+                .padding(AppSpacing.lg)
+                .background(AppColors.accent.opacity(0.08), in: RoundedRectangle(cornerRadius: AppCornerRadius.large))
+                .accessibilityHidden(true)
+            Text(title).font(.title3.bold()).fixedSize(horizontal: false, vertical: true).accessibilityAddTraits(.isHeader)
+            if let subtitle {
+                Text(subtitle).font(.subheadline).foregroundStyle(AppColors.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .multilineTextAlignment(.center)
+        .frame(maxWidth: .infinity)
+        .padding(AppSpacing.lg)
+    }
+}
+
 struct EmptyStateView: View {
     let icon: String
     let title: String
-    var subtitle: String? = nil
+    var subtitle: String?
 
     var body: some View {
         ScrollView {
-            VStack(spacing: AppSpacing.md) {
-                Image(systemName: icon)
-                    .font(AppTypography.title)
-                    .foregroundStyle(.tint)
-                    .padding(AppSpacing.md)
-                    .background(
-                        .tint.opacity(0.1),
-                        in: RoundedRectangle(cornerRadius: AppCornerRadius.medium)
-                    )
-                    .accessibilityHidden(true)
-
-                Text(title)
-                    .font(AppTypography.title)
-
-                if let subtitle {
-                    Text(subtitle)
-                        .font(AppTypography.body)
-                        .foregroundStyle(AppColors.secondaryText)
-                }
-            }
-            .multilineTextAlignment(.center)
-            .frame(maxWidth: .infinity)
-            .padding(AppSpacing.lg)
-            .frame(maxHeight: .infinity)
+            EmptyStateContent(icon: icon, title: title, subtitle: subtitle)
         }
         .defaultScrollAnchor(.center)
         .background(AppColors.appBackground)
     }
-}
-
-#Preview {
-    EmptyStateView(
-        icon: "rectangle.stack.fill",
-        title: "Plans start here",
-        subtitle: "Discover activities to enjoy with coworkers after work."
-    )
-}
-
-#Preview("Title only") {
-    EmptyStateView(icon: "bell.fill", title: "Stay in the loop")
 }

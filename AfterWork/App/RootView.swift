@@ -30,7 +30,7 @@ struct RootView: View {
                 }.padding(AppSpacing.lg)
             case .signedOut: AuthView()
             case .onboardingRequired: OnboardingView()
-            case .signedIn: MainTabView()
+            case .signedIn: MainTabView().id(auth.userID)
             }
         }
         .environment(auth)

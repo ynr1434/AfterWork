@@ -9,66 +9,65 @@ struct FeedView: View {
     private var feedActivities: [Activity] {
         EngagementRules.feedActivities(model.visibleActivities.map { engagement.state(for: $0) })
     }
+    private var currentIndex: Int { min(index, max(0, feedActivities.count - 1)) }
 
     var body: some View {
         @Bindable var model = model
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: AppSpacing.lg) {
-                    Text("What's happening after work?")
-                        .font(AppTypography.body).foregroundStyle(AppColors.secondaryText)
-                        .padding(.horizontal, AppSpacing.lg)
+                    Text("Your next good plan starts here.")
+                        .foregroundStyle(AppColors.secondaryText).padding(.horizontal, AppSpacing.lg)
                     CategoryFilter(selection: $model.selectedCategoryId, categories: model.categories)
                     if !feedActivities.isEmpty {
-                        let activity = feedActivities[min(index, feedActivities.count - 1)]
-                        VStack(spacing: AppSpacing.lg) {
-                            SwipeActivityCard(activity: activity) { action in
-                                Task {
-                                    await handle(action, activity: activity)
-                                    if action == .save { index += 1 }
-                                }
+                        let activity = feedActivities[currentIndex]
+                        VStack(spacing: AppSpacing.md) {
+                            SwipeActivityCard(activity: activity, isBusy: engagement.isBusy) { action in
+                                await handle(action, activity: activity, advance: action == .save)
                             }.id(activity.id)
-                            HStack(spacing: AppSpacing.lg) {
+                            HStack(alignment: .top, spacing: AppSpacing.sm) {
                                 actionButton("Skip", symbol: "xmark", color: .secondary) {
                                     Task { await handle(.skip, activity: activity) }
                                 }
                                 actionButton(activity.isSaved ? "Saved" : "Save", symbol: activity.isSaved ? "bookmark.fill" : "bookmark", color: AppColors.accent) {
                                     Task { await handle(activity.isSaved ? .unsave : .save, activity: activity) }
                                 }
-                                actionButton(activity.authorId == auth.userID ? "Organizer" : (activity.isGoing ? "Going" : "I'm Going"), symbol: activity.authorId == auth.userID || activity.isGoing ? "checkmark.circle.fill" : "checkmark", color: .green) {
+                                let isOrganizer = activity.authorId == auth.userID
+                                let isFull = activity.maxParticipants.map { activity.participantCount >= $0 } ?? false
+                                actionButton(isOrganizer ? "Organizer" : activity.isGoing ? "Going" : isFull ? "Full" : "Join",
+                                             symbol: isOrganizer || activity.isGoing ? "checkmark.circle.fill" : "person.badge.plus", color: AppColors.accent) {
                                     Task { await handle(activity.isGoing ? .leave : .join, activity: activity) }
-                                }.disabled(activity.authorId == auth.userID)
-                            }
+                                }.disabled(isOrganizer || (isFull && !activity.isGoing))
+                            }.disabled(engagement.isBusy)
                             HStack {
-                                Button("Previous", systemImage: "chevron.left") { index = max(0, index - 1) }
-                                    .disabled(index == 0)
+                                Button { index = max(0, currentIndex - 1) } label: {
+                                    Image(systemName: "chevron.left").frame(width: 44, height: 44)
+                                }.disabled(currentIndex == 0).accessibilityLabel("Previous activity")
                                 Spacer()
-                                Text("(min(index + 1, feedActivities.count)) of (feedActivities.count)")
-                                    .font(AppTypography.caption).foregroundStyle(.secondary)
+                                Text(EngagementRules.positionText(index: currentIndex, count: feedActivities.count))
+                                    .font(.subheadline.monospacedDigit()).foregroundStyle(.secondary)
                                 Spacer()
-                                Button("Next", systemImage: "chevron.right") { index += 1 }
-                                    .disabled(index >= feedActivities.count - 1)
-                            }
+                                Button { index = currentIndex + 1 } label: {
+                                    Image(systemName: "chevron.right").frame(width: 44, height: 44)
+                                }.disabled(currentIndex >= feedActivities.count - 1).accessibilityLabel("Next activity")
+                            }.disabled(engagement.isBusy)
                         }.padding(.horizontal, AppSpacing.lg)
+                    } else if model.hasLoaded && !model.visibleActivities.isEmpty && model.errorMessage == nil {
+                        EmptyStateContent(icon: "checkmark.circle", title: "You're all caught up", subtitle: "You've skipped the available plans. Explore other categories or check back for something new.")
                     }
-                    if let error = engagement.errorMessage { Text(error).foregroundStyle(.red).padding(.horizontal, AppSpacing.lg) }
+                    if engagement.isBusy { ProgressView("Updating activity…").frame(maxWidth: .infinity) }
+                    if let error = engagement.errorMessage { InlineMessage(message: error).padding(.horizontal, AppSpacing.lg) }
                     ActivityListStatusView()
                 }
                 .frame(maxWidth: 600).frame(maxWidth: .infinity)
                 .padding(.vertical, AppSpacing.md)
             }
-            .refreshable {
-                await model.load(refresh: true)
-                await engagement.load(activityIDs: model.activities.map(\.id))
-            }
+            .refreshable { await refresh() }
             .background(AppColors.appBackground)
             .navigationTitle("AfterWork")
             .onChange(of: model.selectedCategoryId) { index = 0 }
-            .onChange(of: model.activities.map(\.id)) { index = min(index, max(0, feedActivities.count - 1)) }
-            .task {
-                await model.load()
-                await engagement.load(activityIDs: model.activities.map(\.id))
-            }
+            .onChange(of: feedActivities.map(\.id)) { index = currentIndex }
+            .task { await model.load(); await engagement.load(activityIDs: model.activities.map(\.id)) }
         }
         .onChange(of: engagement.needsAuthentication) { _, needed in
             if needed { Task { await auth.restore() } }
@@ -77,7 +76,14 @@ struct FeedView: View {
 
     enum Action: Equatable { case save, unsave, skip, join, leave }
 
-    private func handle(_ action: Action, activity: Activity) async {
+    private func refresh() async {
+        await model.load(refresh: true)
+        await engagement.load(activityIDs: model.activities.map(\.id))
+    }
+
+    private func handle(_ action: Action, activity: Activity, advance: Bool = false) async {
+        guard !engagement.isBusy else { return }
+        let previousIndex = currentIndex
         switch action {
         case .save: await engagement.save(activityId: activity.id, isSaved: true)
         case .unsave: await engagement.save(activityId: activity.id, isSaved: false)
@@ -85,26 +91,32 @@ struct FeedView: View {
         case .join: await engagement.join(activityId: activity.id)
         case .leave: await engagement.leave(activityId: activity.id, organizerID: activity.authorId)
         }
-        if action == .skip { index += 1 }
-        index = min(index, max(0, feedActivities.count - 1))
+        guard engagement.errorMessage == nil else { return }
+        model.applyEngagement(engagement.states)
+        // Removing a skipped card already moves its successor into the same index.
+        index = EngagementRules.nextIndex(after: action, index: previousIndex, remainingCount: feedActivities.count, advanceSaved: advance)
     }
 
     private func actionButton(_ title: String, symbol: String, color: Color, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             VStack(spacing: AppSpacing.sm) {
                 Image(systemName: symbol).font(.title2.weight(.semibold))
-                    .frame(width: 60, height: 60).background(color.opacity(0.15), in: Circle())
-                Text(title).font(AppTypography.caption.weight(.semibold))
+                    .frame(width: 56, height: 56).background(color.opacity(0.12), in: Circle())
+                Text(title).font(.subheadline.weight(.semibold)).fixedSize(horizontal: false, vertical: true)
             }.frame(maxWidth: .infinity, minHeight: 44)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.plain).foregroundStyle(color)
         .accessibilityLabel(title)
+        .accessibilityHint(title == "Going" ? "Leave this activity" : "")
+        .opacity(engagement.isBusy ? 0.5 : 1)
     }
 }
 
 private struct SwipeActivityCard: View {
     let activity: Activity
-    let action: (FeedView.Action) -> Void
+    let isBusy: Bool
+    let action: (FeedView.Action) async -> Void
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var translation: CGFloat = 0
     @State private var committed = false
 
@@ -112,38 +124,39 @@ private struct SwipeActivityCard: View {
         ZStack {
             NavigationLink { ActivityDetailsView(id: activity.id) } label: {
                 ActivityCard(activity: activity)
-            }.buttonStyle(.plain)
+            }.buttonStyle(.plain).disabled(committed || isBusy)
             HStack {
-                swipeLabel("SKIP", symbol: "xmark", color: .secondary).opacity(translation < 0 ? 1 : 0)
+                swipeLabel("SKIP", symbol: "xmark").opacity(translation < -20 ? 1 : 0)
                 Spacer()
-                swipeLabel("SAVE", symbol: "bookmark.fill", color: AppColors.accent).opacity(translation > 0 ? 1 : 0)
-            }
-            .padding(AppSpacing.lg)
-            .allowsHitTesting(false)
+                swipeLabel("SAVE", symbol: "bookmark.fill").opacity(translation > 20 ? 1 : 0)
+            }.padding(AppSpacing.lg).allowsHitTesting(false).accessibilityHidden(true)
         }
-        .offset(x: translation)
-        .rotationEffect(.degrees(Double(translation / 30)))
-        .gesture(DragGesture().onChanged { value in
-            guard !committed else { return }
+        .offset(x: reduceMotion ? 0 : translation * 0.45)
+        .rotationEffect(.degrees(reduceMotion ? 0 : Double(translation / 60)))
+        .simultaneousGesture(DragGesture(minimumDistance: 24).onChanged { value in
+            guard !committed, !isBusy, abs(value.translation.width) > abs(value.translation.height) else { return }
             translation = value.translation.width
         }.onEnded { value in
-            guard !committed else { return }
-            guard let swipeAction = EngagementRules.swipeAction(for: value.translation.width) else {
-                withAnimation(.spring) { translation = 0 }
-                return
-            }
+            guard !committed, !isBusy else { return }
+            guard abs(value.translation.width) > abs(value.translation.height),
+                  let swipe = EngagementRules.swipeAction(for: value.translation.width) else { reset(); return }
             committed = true
-            let swipeRight = swipeAction == .save
-            withAnimation(.easeIn(duration: 0.2)) { translation = swipeRight ? 700 : -700 }
-            action(swipeRight ? .save : .skip)
+            Task {
+                await action(swipe == .save ? .save : .skip)
+                reset()
+                committed = false
+            }
         })
-        .accessibilityHint("Swipe left to skip or right to save")
+        .accessibilityHint("Opens activity details. Save and Skip buttons are below the card.")
     }
 
-    private func swipeLabel(_ title: String, symbol: String, color: Color) -> some View {
-        Label(title, systemImage: symbol).font(.headline.bold()).foregroundStyle(color)
+    private func reset() {
+        withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) { translation = 0 }
+    }
+    private func swipeLabel(_ title: String, symbol: String) -> some View {
+        Label(title, systemImage: symbol).font(.headline.bold()).foregroundStyle(AppColors.primaryText)
             .padding(.horizontal, AppSpacing.md).padding(.vertical, AppSpacing.sm)
-            .background(.thinMaterial, in: Capsule())
+            .background(.regularMaterial, in: Capsule())
     }
 }
 

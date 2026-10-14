@@ -19,7 +19,7 @@ final class ActivityPhotosViewModel {
         self.repository = repository ?? (try? ActivityPhotoRepository(client: SupabaseManager.shared.client))
     }
 
-    func load(activity: Activity, currentUserID: UUID?) async {
+    func updateAccess(activity: Activity, currentUserID: UUID?) {
         self.currentUserID = currentUserID
         activityAuthorID = activity.authorId
         canUpload = ActivityPhotoRules.canUpload(
@@ -27,7 +27,12 @@ final class ActivityPhotosViewModel {
             currentUserID: currentUserID,
             isGoing: activity.isGoing
         )
-        guard let repository else { return }
+    }
+
+    func load(activity: Activity, currentUserID: UUID?) async {
+        updateAccess(activity: activity, currentUserID: currentUserID)
+        guard !isLoading else { return }
+        guard let repository else { errorMessage = ActivityPhotoError.requestFailed.localizedDescription; return }
         isLoading = true
         defer { isLoading = false }
         do {
@@ -51,7 +56,8 @@ final class ActivityPhotosViewModel {
             guard let source = try await item.loadTransferable(type: Data.self) else {
                 throw ActivityPhotoError.invalidImage
             }
-            let jpeg = try ActivityPhotoProcessor.process(data: source)
+            let jpeg = try await Task.detached(priority: .userInitiated) { try ActivityPhotoProcessor.process(data: source) }.value
+            try Task.checkCancellation()
             _ = try await repository.uploadPhoto(activityID: activity.id, jpegData: jpeg)
             await load(activity: activity, currentUserID: currentUserID)
         } catch {
@@ -83,5 +89,5 @@ final class ActivityPhotosViewModel {
 }
 
 private func photoErrorMessage(_ error: Error) -> String {
-    (error as? LocalizedError)?.errorDescription ?? ActivityPhotoError.requestFailed.localizedDescription
+    (error as? ActivityPhotoError)?.errorDescription ?? ActivityPhotoError.requestFailed.localizedDescription
 }
