@@ -422,7 +422,7 @@ struct ActivityDetailsView: View {
             Button {
                 Task { await engagement.join(activityId: activity.id) }
             } label: {
-                Label(isFull ? "Activity full" : "Join this activity", systemImage: "checkmark")
+                Label(isFull ? "Activity full" : "Join", systemImage: "checkmark")
                     .frame(maxWidth: .infinity, minHeight: 52)
             }
             .buttonStyle(.borderedProminent)

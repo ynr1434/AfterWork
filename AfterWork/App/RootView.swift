@@ -3,9 +3,40 @@ import SwiftUI
 struct RootView: View {
     @State private var auth = AuthManager()
     @State private var push = PushNotificationManager.shared
+    @State private var isLaunchAnimationVisible = true
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
+        ZStack {
+            if isLaunchAnimationVisible {
+                LaunchAnimationView {
+                    withAnimation(.easeOut(duration: 0.25)) {
+                        isLaunchAnimationVisible = false
+                    }
+                }
+                .transition(.opacity)
+            } else {
+                appContent
+            }
+        }
+        .environment(auth)
+        .environment(push)
+        .tint(AppColors.accent)
+        .task {
+            auth.prepareForSignOut = { try await push.prepareForSignOut() }
+            auth.onSessionEnded = { push.sessionEnded() }
+            await auth.start()
+        }
+        .task(id: auth.userID) { await push.synchronize(userID: auth.userID) }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { Task { await auth.refreshIfNeeded(); if !auth.isBusy { await push.synchronize(userID: auth.userID) } } }
+        }
+        // OAuth is returned directly to the in-flight ASWebAuthenticationSession.
+        // No general onOpenURL token handler is installed, preventing unsolicited callbacks.
+    }
+
+    @ViewBuilder
+    private var appContent: some View {
         Group {
             switch auth.state {
             case .loading:
@@ -33,19 +64,5 @@ struct RootView: View {
             case .signedIn: MainTabView().id(auth.userID)
             }
         }
-        .environment(auth)
-        .environment(push)
-        .tint(AppColors.accent)
-        .task {
-            auth.prepareForSignOut = { try await push.prepareForSignOut() }
-            auth.onSessionEnded = { push.sessionEnded() }
-            await auth.start()
-        }
-        .task(id: auth.userID) { await push.synchronize(userID: auth.userID) }
-        .onChange(of: scenePhase) { _, phase in
-            if phase == .active { Task { await auth.refreshIfNeeded(); if !auth.isBusy { await push.synchronize(userID: auth.userID) } } }
-        }
-        // OAuth is returned directly to the in-flight ASWebAuthenticationSession.
-        // No general onOpenURL token handler is installed, preventing unsolicited callbacks.
     }
 }
