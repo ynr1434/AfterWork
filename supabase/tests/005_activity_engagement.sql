@@ -15,14 +15,17 @@ language plpgsql as $$ begin
 end $$;
 
 insert into auth.users(id) values
-('90000000-0000-0000-0000-000000000001'), ('90000000-0000-0000-0000-000000000002');
+('90000000-0000-0000-0000-000000000001'),
+('90000000-0000-0000-0000-000000000002'),
+('90000000-0000-0000-0000-000000000003');
 insert into public.profiles(id, display_name) values
 ('90000000-0000-0000-0000-000000000001', 'Organizer'),
-('90000000-0000-0000-0000-000000000002', 'Guest');
+('90000000-0000-0000-0000-000000000002', 'Guest'),
+('90000000-0000-0000-0000-000000000003', 'Another Guest');
 select set_config('request.jwt.claim.sub', '90000000-0000-0000-0000-000000000001', true);
 set local role authenticated;
 insert into public.activities(author_id, category_id, title, start_at, location_name, max_participants)
-select auth.uid(), id, 'Stage 6 disposable activity', now() + interval '1 day', 'Test Hall', 1
+select auth.uid(), id, 'Stage 6 disposable activity', now() + interval '1 day', 'Test Hall', 2
 from public.categories limit 1;
 select pg_temp.assert_true((select count(*) = 1 from public.activity_participants
     where activity_id = (select id from public.activities where title = 'Stage 6 disposable activity')
@@ -37,7 +40,23 @@ select pg_temp.assert_true((select is_saved and is_skipped from public.activity_
 reset role;
 select set_config('request.jwt.claim.sub', '90000000-0000-0000-0000-000000000002', true);
 set local role authenticated;
-select pg_temp.expect_error('update public.activity_user_actions set is_saved = false', '42501');
+select pg_temp.expect_error(
+    'insert into public.activity_user_actions(activity_id, user_id, is_saved) values (' ||
+    '(select id from public.activities where title = ''Stage 6 disposable activity''), ' ||
+    '''90000000-0000-0000-0000-000000000001'', false)',
+    '42501'
+);
+select * from public.join_activity((select id from public.activities where title = 'Stage 6 disposable activity'));
+select pg_temp.assert_true((select count(*) = 2 from public.activity_participants
+    where activity_id = (select id from public.activities where title = 'Stage 6 disposable activity')
+      and status = 'going'), 'non-organizer can join under activity SELECT RLS');
+select * from public.join_activity((select id from public.activities where title = 'Stage 6 disposable activity'));
+select pg_temp.assert_true((select count(*) = 2 from public.activity_participants
+    where activity_id = (select id from public.activities where title = 'Stage 6 disposable activity')
+      and status = 'going'), 'repeated join is idempotent');
+reset role;
+select set_config('request.jwt.claim.sub', '90000000-0000-0000-0000-000000000003', true);
+set local role authenticated;
 select pg_temp.expect_error('select * from public.join_activity((select id from public.activities where title = ''Stage 6 disposable activity''))', 'P0001');
 select pg_temp.assert_true((select relrowsecurity from pg_class where oid = 'public.activity_user_actions'::regclass), 'engagement RLS enabled');
 rollback;
