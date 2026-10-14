@@ -100,6 +100,13 @@ struct ActivityPhotoRepository {
         }
     }
 
+    func deletePhoto(storagePath: String) async throws {
+        let rows: [PhotoID] = try await client.from("activity_photos")
+            .select("id").eq("storage_path", value: storagePath).limit(1).execute().value
+        guard let row = rows.first else { return }
+        try await deletePhoto(photoID: row.id)
+    }
+
     private func removeUploadedObjectAfterFailure(path: String, activityID: UUID, photoID: UUID) async {
         do {
             try await client.storage.from(Self.bucketName).remove(paths: [path])

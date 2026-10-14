@@ -13,6 +13,7 @@ final class ActivityListViewModel {
     private(set) var needsAuthentication = false
     private(set) var hasMore = false
     private(set) var revision = 0
+    private var engagementStates: [UUID: ActivityEngagementState] = [:]
     private var offset = 0
     private var fromDate = Date.now
     private let pageSize = 50
@@ -40,6 +41,7 @@ final class ActivityListViewModel {
     }
 
     func applyEngagement(_ states: [UUID: ActivityEngagementState]) {
+        engagementStates.merge(states) { _, new in new }
         activities = activities.map { activity in
             guard let state = states[activity.id] else { return activity }
             var result = activity
@@ -47,6 +49,7 @@ final class ActivityListViewModel {
             result.isSkipped = state.isSkipped
             result.isGoing = state.isGoing
             if let participantCount = state.participantCount { result.participantCount = participantCount }
+            if let initials = state.participantInitials { result.participantInitials = initials }
             return result
         }
     }
@@ -81,7 +84,16 @@ final class ActivityListViewModel {
                 self.categories = categories
                 let all = append ? self.activities + page : page
                 var seen = Set<UUID>()
-                self.activities = ActivityDayGroup.upcoming(all).filter { seen.insert($0.id).inserted }
+                self.activities = ActivityDayGroup.upcoming(all).filter { seen.insert($0.id).inserted }.map { activity in
+                    // The list endpoint returns counts but not the current user's actions.
+                    // Preserve confirmed action flags while accepting fresh backend counts.
+                    guard let state = self.engagementStates[activity.id] else { return activity }
+                    var result = activity
+                    result.isSaved = state.isSaved
+                    result.isSkipped = state.isSkipped
+                    result.isGoing = state.isGoing
+                    return result
+                }
                 self.offset = pageOffset + page.count
                 self.hasMore = page.count == self.pageSize
                 self.hasLoaded = true
@@ -110,6 +122,7 @@ final class ActivityListViewModel {
     func didDelete(id: UUID) {
         invalidateRequest()
         activities.removeAll { $0.id == id }
+        engagementStates.removeValue(forKey: id)
         revision += 1
     }
 

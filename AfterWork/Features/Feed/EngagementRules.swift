@@ -5,16 +5,6 @@ enum EngagementSwipeAction: Equatable {
 }
 
 enum EngagementRules {
-    static func positionText(index: Int, count: Int) -> String {
-        guard count > 0 else { return "No activities" }
-        return "\(min(max(0, index) + 1, count)) of \(count)"
-    }
-
-    static func nextIndex(after action: FeedView.Action, index: Int, remainingCount: Int, advanceSaved: Bool) -> Int {
-        let next = index + (action == .save && advanceSaved ? 1 : 0)
-        return min(max(0, next), max(0, remainingCount - 1))
-    }
-
     static let swipeThreshold: CGFloat = 120
 
     static func swipeAction(for horizontalTranslation: CGFloat) -> EngagementSwipeAction? {

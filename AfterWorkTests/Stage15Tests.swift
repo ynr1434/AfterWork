@@ -3,25 +3,73 @@ import XCTest
 
 @MainActor
 final class Stage15Tests: XCTestCase {
-    func testSkippingKeepsSuccessorAtSamePosition() {
-        XCTAssertEqual(EngagementRules.nextIndex(after: .skip, index: 0, remainingCount: 3, advanceSaved: false), 0)
-        XCTAssertEqual(EngagementRules.nextIndex(after: .skip, index: 2, remainingCount: 2, advanceSaved: false), 1)
-        XCTAssertEqual(EngagementRules.nextIndex(after: .skip, index: 0, remainingCount: 0, advanceSaved: false), 0)
+    func testFeedHasTwelveUniqueAlmatyPlaceIdeas() {
+        let suggestions = AlmatyPlaceSuggestions.all
+        XCTAssertEqual(suggestions.count, 12)
+        XCTAssertEqual(Set(suggestions.map(\.id)).count, suggestions.count)
+        XCTAssertTrue(suggestions.allSatisfy { !$0.name.isEmpty && !$0.pitch.isEmpty && !$0.details.isEmpty && !$0.groupIdea.isEmpty && !$0.imageName.isEmpty })
+        XCTAssertEqual(Set(suggestions.map(\.imageName)).count, suggestions.count)
     }
 
-    func testSaveSwipeAdvancesButSaveButtonAndJoinKeepPosition() {
-        XCTAssertEqual(EngagementRules.nextIndex(after: .save, index: 0, remainingCount: 3, advanceSaved: true), 1)
-        for action in [FeedView.Action.save, .unsave, .join, .leave] {
-            XCTAssertEqual(EngagementRules.nextIndex(after: action, index: 0, remainingCount: 3, advanceSaved: false), 0)
-        }
-        XCTAssertEqual(EngagementRules.nextIndex(after: .save, index: 2, remainingCount: 3, advanceSaved: true), 2)
+    func testCreateActivityCanBePrefilledWithSavedPlace() async {
+        let model = ActivityFormViewModel(
+            initialLocationName: "Line Brew",
+            initialLocationAddress: "City centre"
+        )
+        XCTAssertEqual(model.draft.locationName, "Line Brew")
+        XCTAssertEqual(model.draft.locationAddress, "City centre")
     }
 
-    func testFeedPositionIsReadableAndClamped() {
-        XCTAssertEqual(EngagementRules.positionText(index: 1, count: 4), "2 of 4")
-        XCTAssertEqual(EngagementRules.positionText(index: 9, count: 4), "4 of 4")
-        XCTAssertEqual(EngagementRules.positionText(index: -2, count: 4), "1 of 4")
-        XCTAssertEqual(EngagementRules.positionText(index: 0, count: 0), "No activities")
+    func testSelectedCoverUploadsAfterActivityExists() async throws {
+        let createdActivity = try ActivityFixtures.record().activity()
+        var uploadedActivityID: UUID?
+        var uploadedData: Data?
+        let model = ActivityFormViewModel(
+            categoriesLoader: { [ActivityFixtures.category()] },
+            saveActivity: { _, id in
+                XCTAssertNil(id)
+                return createdActivity
+            },
+            uploadCoverImage: { activityID, data in
+                uploadedActivityID = activityID
+                uploadedData = data
+                var result = createdActivity
+                result.coverImageURL = "https://example.invalid/signed-cover"
+                return result
+            }
+        )
+        model.draft.title = "After work plan"
+        model.draft.categoryId = ActivityFixtures.categoryID
+        model.draft.locationName = "Office"
+        model.setSelectedCoverImage(Data([0xFF, 0xD8, 0xFF]))
+        await model.loadCategories()
+
+        let saved = await model.save(userID: createdActivity.authorId)
+
+        XCTAssertEqual(saved?.coverImageURL, "https://example.invalid/signed-cover")
+        XCTAssertEqual(uploadedActivityID, createdActivity.id)
+        XCTAssertEqual(uploadedData, Data([0xFF, 0xD8, 0xFF]))
+        XCTAssertNil(model.coverUploadErrorMessage)
+    }
+
+    func testCoverUploadFailureKeepsPublishedActivityOnCategoryArtwork() async throws {
+        let createdActivity = try ActivityFixtures.record().activity()
+        let model = ActivityFormViewModel(
+            categoriesLoader: { [ActivityFixtures.category()] },
+            saveActivity: { _, _ in createdActivity },
+            uploadCoverImage: { _, _ in throw ActivityPhotoError.requestFailed }
+        )
+        model.draft.title = "After work plan"
+        model.draft.categoryId = ActivityFixtures.categoryID
+        model.draft.locationName = "Office"
+        model.setSelectedCoverImage(Data([0xFF, 0xD8, 0xFF]))
+        await model.loadCategories()
+
+        let saved = await model.save(userID: createdActivity.authorId)
+
+        XCTAssertEqual(saved?.id, createdActivity.id)
+        XCTAssertNil(saved?.coverImageURL)
+        XCTAssertNotNil(model.coverUploadErrorMessage)
     }
 
     func testScheduleUsesLocalCalendarAtMidnight() throws {
@@ -117,7 +165,7 @@ final class Stage15Tests: XCTestCase {
         XCTAssertEqual(MentionComposer.insert(suggestion, into: "Hello"), "Hello")
     }
 
-    func testPhotoAccessUpdatesImmediatelyAfterJoinAndLeave() throws {
+    func testPhotoAccessUpdatesImmediatelyAfterJoinAndLeave() async throws {
         var activity = try ActivityFixtures.record().activity()
         let member = UUID()
         let model = ActivityPhotosViewModel()
@@ -133,4 +181,48 @@ final class Stage15Tests: XCTestCase {
         model.updateAccess(activity: activity, currentUserID: nil)
         XCTAssertFalse(model.canUpload)
     }
+    func testSharedEngagementSurvivesListRefreshWithFreshParticipantCount() async throws {
+        var activity = try ActivityFixtures.record().activity()
+        let model = ActivityListViewModel(loadCategories: { [ActivityFixtures.category()] },
+                                          loadActivities: { _, _, _, _ in [activity] })
+        await model.load()
+        model.applyEngagement([activity.id: ActivityEngagementState(
+            isSaved: true, isSkipped: true, isGoing: true, participantCount: 2, participantInitials: ["AL"]
+        )])
+        XCTAssertEqual(model.activities.first?.participantInitials, ["AL"])
+        activity.participantCount = 5
+        await model.load(refresh: true)
+        let refreshed = try XCTUnwrap(model.activities.first)
+        XCTAssertTrue(refreshed.isSaved)
+        XCTAssertTrue(refreshed.isSkipped)
+        XCTAssertTrue(refreshed.isGoing)
+        XCTAssertEqual(refreshed.participantCount, 5)
+    }
+
+    func testDetailsUnsaveAndLeaveReplaceSharedState() async throws {
+        let activity = try ActivityFixtures.record().activity()
+        let model = ActivityListViewModel(loadCategories: { [] }, loadActivities: { _, _, _, _ in [activity] })
+        await model.load()
+        model.applyEngagement([activity.id: ActivityEngagementState(isSaved: true, isGoing: true, participantCount: 2)])
+        model.applyEngagement([activity.id: ActivityEngagementState(isSaved: false, isGoing: false, participantCount: 1)])
+        let updated = try XCTUnwrap(model.activities.first)
+        XCTAssertFalse(updated.isSaved)
+        XCTAssertFalse(updated.isGoing)
+        XCTAssertEqual(updated.participantCount, 1)
+        await model.load(refresh: true)
+        XCTAssertFalse(try XCTUnwrap(model.activities.first).isSaved)
+        XCTAssertFalse(try XCTUnwrap(model.activities.first).isGoing)
+    }
+
+    func testSharedEngagementIsIsolatedBetweenListInstances() async throws {
+        let activity = try ActivityFixtures.record().activity()
+        let first = ActivityListViewModel(loadCategories: { [] }, loadActivities: { _, _, _, _ in [activity] })
+        await first.load()
+        first.applyEngagement([activity.id: ActivityEngagementState(isSaved: true, isSkipped: true)])
+        let nextUser = ActivityListViewModel(loadCategories: { [] }, loadActivities: { _, _, _, _ in [activity] })
+        await nextUser.load()
+        XCTAssertFalse(try XCTUnwrap(nextUser.activities.first).isSaved)
+        XCTAssertFalse(try XCTUnwrap(nextUser.activities.first).isSkipped)
+    }
+
 }

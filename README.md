@@ -1,5 +1,31 @@
 ## Stage 10 — Remote Push Notifications
 
+
+## Stage 15 — Final MVP UI/UX Polish
+
+Continued from the colleague's `1ac5d9d` on `feature/stage-15-mvp-polish`, based on the Stage 10 main commit `fe90b5a`. Stages 11–14 remain out of scope. See [STAGE15.md](STAGE15.md) for the implementation audit, exact verification, file inventory and remaining release prerequisites.
+
+- Adaptive card surfaces, error colors, reusable inline messages and empty states preserve the existing AfterWork design.
+- Feed is a separate mock carousel of 12 Almaty cafés, restaurants, pubs and bars, with friend-group occasion copy. It does not duplicate Explore or send activity/engagement writes to Supabase. Swipe or use Previous/Next to browse ideas.
+- Activity cards and rows use local calendar/time-zone formatting and adapt to accessibility text sizes. Native five-tab navigation is retained.
+- Create preserves backend validation and duplicate-submit protection; category selection uses a native navigation list. The editor scales with Dynamic Type. Publish is the creation action; no extra keyboard Done button is added.
+- Details separates information, attendance, photos, discussion, and calendar actions; Retry reloads all associated sections. Photo thumbnails use private signed access, accessible actions, progress/error states, and a paged full-screen viewer.
+- Comments preserve mention IDs, ownership controls, draft text on failure, and deletion retry. Notifications retain APNs routing and guard against late refreshes undoing read state.
+- Authentication buttons preserve provider branding and existing OAuth logic. Main-tab state is recreated when the authenticated account changes.
+- Loading/error/empty presentation, dark appearance, keyboard scrolling, VoiceOver labels, touch targets, and Reduce Motion support were reviewed. No new dependency, backend migration, signing change, or remote deployment was introduced.
+- Target remains iOS 17+, with iPhone-first layouts. Simulator visual checks covered small (16e) and standard (17 Pro) devices on iOS 26.1. The large 17 Pro Max visual check did not complete; physical-device and full iPad certification are also still required.
+- Full XCTest suite: **82 tests passed** after replacing obsolete Feed-action cases with coverage for the 12 place ideas. An initial synchronous actor-isolated test hit a Swift runtime deinit crash; running that test as async fixed its invocation without removing assertions.
+
+### Stage 15 manual beta QA still required
+
+- Repeat Google/Apple sign-in, onboarding, session restore, logout/account switch using the intended development project and provisioned device.
+- Create/edit/delete only disposable test activities; verify one Publish, organizer attendance, Save/Unsave, Skip, Join/Leave, capacity and participant counts with two accounts.
+- Check discussion/mentions/notification links and badges; upload/view/page/delete private test photos and verify unrelated records remain untouched.
+- Test calendar/reminders and real-device APNs foreground/background/cold-start routing; Simulator XCTest does not certify delivery or provisioning.
+- Review long titles/comments, normal and accessibility text sizes, VoiceOver, Reduce Motion, keyboard overlap, landscape, offline/retry and populated states in light/dark mode.
+- Release prerequisites: account deletion entry point, in-app privacy policy/support links, UGC reporting/blocking/moderation review, App Store privacy declarations and SDK required-reason API audit, final icon/metadata, and Apple/APNs provisioning. These are separate from the intentionally skipped discovery/maps/advanced-profile features. This app is not claimed to be App Store approved.
+
+
 Stage 10 is prepared locally on `feature/stage-10-remote-push`. See [STAGE10.md](STAGE10.md) for the complete architecture/security report, file inventory, validation, exact setup/deployment instructions and physical-device verification plan. **No migration, function, secrets or webhook has been deployed remotely.**
 
 - Existing Stage 8 `notifications` INSERTs remain the source of truth for `mention` and `activityComment`. One secured Database Webhook invokes the new Supabase Edge Function, which rereads the canonical recipient and sends generic alerts through the correct HTTP/2 APNs environment. No new in-app source, activity broadcasts or Firebase backend is added.

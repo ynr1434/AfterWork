@@ -37,7 +37,7 @@ struct ActivityRepository {
             let start = max(0, offset)
             let rows: [ActivityRecordDTO] = try await query.order("start_at").order("id")
                 .range(from: start, to: start + min(max(limit, 1), 100) - 1).execute().value
-            return rows.map { $0.activity() }
+            return await resolveCoverURLs(rows.map { $0.activity() })
         }
     }
 
@@ -49,7 +49,8 @@ struct ActivityRepository {
         try await perform {
             let rows: [ActivityRecordDTO] = try await client.from("activities").select(Self.selection)
                 .eq("id", value: id.uuidString).eq("going.status", value: "going").limit(1).execute().value
-            return rows.first?.activity()
+            guard let row = rows.first else { return nil }
+            return await resolveCoverURLs([row.activity()]).first
         }
     }
 
@@ -59,7 +60,7 @@ struct ActivityRepository {
             let rows: [ActivityRecordDTO] = try await client.from("activities").select(Self.selection)
                 .in("id", values: ids.map(\.uuidString)).eq("going.status", value: "going")
                 .order("start_at").order("id").execute().value
-            return rows.map { $0.activity() }
+            return await resolveCoverURLs(rows.map { $0.activity() })
         }
     }
 
@@ -69,7 +70,7 @@ struct ActivityRepository {
             let rows: [ActivityRecordDTO] = try await client.from("activities").select(Self.selection)
                 .eq("author_id", value: userID.uuidString).eq("going.status", value: "going")
                 .order("start_at").order("id").limit(min(max(limit, 1), 100)).execute().value
-            return rows.map { $0.activity() }
+            return await resolveCoverURLs(rows.map { $0.activity() })
         }
     }
 
@@ -125,7 +126,52 @@ struct ActivityRepository {
                 .eq("id", value: id.uuidString).eq("author_id", value: authorID.uuidString)
                 .eq("going.status", value: "going").select(Self.selection).execute().value
             guard let result = rows.first else { throw ActivityError.notOwner }
-            return result.activity()
+            return await resolveCoverURLs([result.activity()]).first ?? result.activity()
+        }
+    }
+
+    /// Stores the selected cover in the private activity photo bucket. The metadata row
+    /// keeps it subject to the same membership, ownership, and cleanup rules as gallery photos.
+    func attachCoverImage(activityID: UUID, jpegData: Data) async throws -> Activity {
+        let authorID = try await currentUserID()
+        let current: [CoverPathDTO] = try await perform {
+            try await client.from("activities").select("cover_image_url")
+                .eq("id", value: activityID.uuidString)
+                .eq("author_id", value: authorID.uuidString)
+                .limit(1).execute().value
+        }
+        guard let currentRow = current.first else { throw ActivityError.notOwner }
+        let currentCoverPath = currentRow.coverImageUrl
+
+        let photoRepository = ActivityPhotoRepository(client: client)
+        let photo = try await photoRepository.uploadPhoto(activityID: activityID, jpegData: jpegData)
+        do {
+            let rows: [ActivityRecordDTO] = try await perform {
+                try await client.from("activities")
+                    .update(CoverImageValue(path: photo.storagePath))
+                    .eq("id", value: activityID.uuidString)
+                    .eq("author_id", value: authorID.uuidString)
+                    .eq("going.status", value: "going")
+                    .select(Self.selection).execute().value
+            }
+            guard let row = rows.first else { throw ActivityError.notOwner }
+            if let oldPath = currentCoverPath, oldPath != photo.storagePath {
+                try? await photoRepository.deletePhoto(storagePath: oldPath)
+            }
+            return await resolveCoverURLs([row.activity()]).first ?? row.activity()
+        } catch {
+            // A lost response may follow a successful update. Confirm the stored path before
+            // rolling back the just-uploaded object so the database never points to a deleted cover.
+            let latest: [CoverPathDTO] = (try? await client.from("activities").select("cover_image_url")
+                .eq("id", value: activityID.uuidString)
+                .eq("author_id", value: authorID.uuidString)
+                .limit(1).execute().value) ?? []
+            if latest.first?.coverImageUrl == photo.storagePath,
+               let activity = try await fetchActivity(id: activityID) {
+                return activity
+            }
+            try? await photoRepository.deletePhoto(photoID: photo.id)
+            throw error
         }
     }
 
@@ -158,6 +204,36 @@ struct ActivityRepository {
                 .eq("id", value: id.uuidString).eq("author_id", value: authorID.uuidString)
                 .select("id").execute().value
             guard rows.contains(where: { $0.id == id }) else { throw ActivityError.notOwner }
+        }
+    }
+
+    private func resolveCoverURLs(_ activities: [Activity]) async -> [Activity] {
+        let storagePaths = activities.compactMap { activity -> String? in
+            guard let value = activity.coverImageURL,
+                  URL(string: value)?.scheme == nil,
+                  value.hasPrefix("activities/\(activity.id.uuidString.lowercased())/") else { return nil }
+            return value
+        }
+        guard !storagePaths.isEmpty else { return activities }
+
+        var signedURLs: [String: URL] = [:]
+        do {
+            let results = try await client.storage.from(ActivityPhotoRepository.bucketName)
+                .createSignedURLs(paths: storagePaths, expiresIn: ActivityPhotoRules.signedURLLifetimeSeconds)
+            for result in results {
+                if case let .success(path, url) = result { signedURLs[path] = url }
+            }
+        } catch {
+            // Covers are optional; a Storage access issue must not hide the activity itself.
+        }
+
+        return activities.map { activity in
+            guard let path = activity.coverImageURL,
+                  URL(string: path)?.scheme == nil,
+                  path.hasPrefix("activities/\(activity.id.uuidString.lowercased())/") else { return activity }
+            var resolved = activity
+            resolved.coverImageURL = signedURLs[path]?.absoluteString
+            return resolved
         }
     }
 
@@ -194,6 +270,17 @@ struct ActivityRepository {
 private struct ActivityPhotoPath: Decodable {
     let storagePath: String
     enum CodingKeys: String, CodingKey { case storagePath = "storage_path" }
+}
+
+private struct CoverPathDTO: Decodable {
+    let coverImageUrl: String?
+    enum CodingKeys: String, CodingKey { case coverImageUrl = "cover_image_url" }
+}
+
+private struct CoverImageValue: Encodable {
+    let coverImageUrl: String
+    enum CodingKeys: String, CodingKey { case coverImageUrl = "cover_image_url" }
+    init(path: String) { coverImageUrl = path }
 }
 
 
